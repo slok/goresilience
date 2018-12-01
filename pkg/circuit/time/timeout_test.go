@@ -1,4 +1,4 @@
-package circuitbreaker_test
+package time_test
 
 import (
 	"context"
@@ -8,14 +8,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/slok/goresilience/pkg/circuitbreaker"
+	"github.com/slok/goresilience/pkg/circuit"
+	cbtime "github.com/slok/goresilience/pkg/circuit/time"
 )
 
 func TestStaticLatency(t *testing.T) {
 	tests := []struct {
 		name        string
 		timeout     time.Duration
-		cmd         circuitbreaker.Command
+		cmd         circuit.Command
 		expFallback bool
 		expErr      bool
 	}{
@@ -53,10 +54,7 @@ func TestStaticLatency(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cb := circuitbreaker.StaticLatency{
-				TimeoutDuration: test.timeout,
-			}
-			fallback, err := cb.Run(context.TODO(), test.cmd)
+			fallback, err := cbtime.NewStaticLatency(test.timeout, test.cmd).Run(context.TODO())
 
 			if test.expErr {
 				assert.Error(err)
