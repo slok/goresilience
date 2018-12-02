@@ -1,10 +1,11 @@
-package time
+package timeout
 
 import (
 	"context"
 	"time"
 
-	"github.com/slok/goresilience/pkg/circuit"
+	"github.com/slok/goresilience"
+	"github.com/slok/goresilience/errors"
 )
 
 const (
@@ -18,12 +19,11 @@ type result struct {
 	err      error
 }
 
-// NewStaticLatency will wrap a circuit braker with a
-// circuit breaker that will cut the execution of
-// a command when some time passes using the context.
+// NewStatic will wrap a execution unit that will cut the execution of
+// a runner when some time passes using the context.
 // use 0 timeout for default timeout.
-func NewStaticLatency(timeout time.Duration, cb circuit.Breaker) circuit.Breaker {
-	return circuit.BreakerFunc(func(ctx context.Context) (bool, error) {
+func NewStatic(timeout time.Duration, r goresilience.Runner) goresilience.Runner {
+	return goresilience.RunnerFunc(func(ctx context.Context) error {
 		// Fallback settings to defaults.
 		if timeout == 0 {
 			timeout = defaultTimeout
@@ -35,20 +35,19 @@ func NewStaticLatency(timeout time.Duration, cb circuit.Breaker) circuit.Breaker
 		ctx, _ = context.WithTimeout(ctx, timeout)
 
 		// Run the command
-		resultc := make(chan result)
+		errc := make(chan error)
 		go func() {
-			f, err := cb.Run(ctx)
-			resultc <- result{fallback: f, err: err}
+			errc <- r.Run(ctx)
 		}()
 
 		// Wait until the deadline has been reached or w have a result.
 		select {
 		// Circuit finished correctly.
-		case res := <-resultc:
-			return res.fallback, res.err
+		case err := <-errc:
+			return err
 		// Circuit timeout.
 		case <-ctx.Done():
-			return true, nil
+			return errors.ErrTimeout
 		}
 	})
 }

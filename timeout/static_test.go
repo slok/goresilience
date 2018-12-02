@@ -1,4 +1,4 @@
-package time_test
+package timeout_test
 
 import (
 	"context"
@@ -8,35 +8,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	grerrors "github.com/slok/goresilience/errors"
 	"github.com/slok/goresilience/pkg/circuit"
-	cbtime "github.com/slok/goresilience/pkg/circuit/time"
+	"github.com/slok/goresilience/timeout"
 )
 
 func TestStaticLatency(t *testing.T) {
+	err := errors.New("wanted error")
+
 	tests := []struct {
-		name        string
-		timeout     time.Duration
-		cmd         circuit.Command
-		expFallback bool
-		expErr      bool
+		name    string
+		timeout time.Duration
+		cmd     circuit.Command
+		expErr  error
 	}{
 		{
-			name:    "A command that has been run without timeout shouldn't return a fallback and return the result.",
+			name:    "A command that has been run without timeout shouldn't return and error.",
 			timeout: 1 * time.Second,
 			cmd: func(ctx context.Context) error {
 				return nil
 			},
-			expFallback: false,
-			expErr:      false,
+			expErr: nil,
 		},
 		{
-			name:    "A command that has been run without timeout shouldn't return a fallback and return the result (error result).",
+			name:    "A command that has been run without timeout should return aerror result).",
 			timeout: 1 * time.Second,
 			cmd: func(ctx context.Context) error {
-				return errors.New("wanted error")
+				return err
 			},
 			expFallback: false,
-			expErr:      true,
+			expErr:      err,
 		},
 		{
 			name:    "A command that has been run with timeout should return a fallback and don't let the function finish and return the err result.",
@@ -46,7 +47,7 @@ func TestStaticLatency(t *testing.T) {
 				return errors.New("wanted error")
 			},
 			expFallback: true,
-			expErr:      false,
+			expErr:      grerrors.ErrTimeout,
 		},
 	}
 
@@ -54,13 +55,8 @@ func TestStaticLatency(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			fallback, err := cbtime.NewStaticLatency(test.timeout, test.cmd).Run(context.TODO())
-
-			if test.expErr {
-				assert.Error(err)
-			} else if assert.NoError(err) {
-				assert.Equal(test.expFallback, fallback)
-			}
+			err := timeout.NewStatic(test.timeout, test.cmd).Run(context.TODO())
+			assert.Equal(test.expErr, err)
 		})
 	}
 }
