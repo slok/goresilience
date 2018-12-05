@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/slok/goresilience"
+	runnerutils "github.com/slok/goresilience/internal/util/runner"
 )
 
 // Config is the configuration used for the retry Runner.
@@ -29,7 +30,6 @@ func (c *Config) defaults() {
 	if c.Times <= 0 {
 		c.Times = 3
 	}
-
 }
 
 // New returns a new retry execution, the execution will be retried the number
@@ -37,14 +37,16 @@ func (c *Config) defaults() {
 func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 	cfg.defaults()
 
+	r = runnerutils.Sanitize(r)
+
 	// Use the algorithms for jitter and backoff.
 	// https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
-	return goresilience.RunnerFunc(func(ctx context.Context) error {
+	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
 		var err error
 
 		// Start the attemps. (it's 1 + the number of retries.)
 		for i := 0; i <= cfg.Times; i++ {
-			err = r.Run(ctx)
+			err = r.Run(ctx, f)
 			if err == nil {
 				return nil
 			}

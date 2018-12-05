@@ -6,60 +6,58 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
+	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/fallback"
-	mgoresilience "github.com/slok/goresilience/internal/mocks"
 )
 
 func TestFallback(t *testing.T) {
 	err := errors.New("wanted error")
 	tests := []struct {
-		name     string
-		runner   func() *mgoresilience.Runner
-		fallback func() *mgoresilience.Runner
-		expErr   error
+		name            string
+		cmd             goresilience.Func
+		fallback        func(called bool) goresilience.Func
+		expFallbackCall bool
+		expErr          error
 	}{
 		{
 			name: "Fallback should be called in case the runner fails (with no fallback error).",
-			runner: func() *mgoresilience.Runner {
-				r := &mgoresilience.Runner{}
-				r.On("Run", mock.Anything).Return(err)
-				return r
+			cmd: func(ctx context.Context) error {
+				return err
 			},
-			fallback: func() *mgoresilience.Runner {
-				// Expect fallback will be called.
-				r := &mgoresilience.Runner{}
-				r.On("Run", mock.Anything).Return(nil)
-				return r
+			fallback: func(called bool) goresilience.Func {
+				return func(context.Context) error {
+					called = true
+					return nil
+				}
 			},
 			expErr: nil,
 		},
 		{
 			name: "Fallback should be called in case the runner fails (with fallback error).",
-			runner: func() *mgoresilience.Runner {
-				r := &mgoresilience.Runner{}
-				r.On("Run", mock.Anything).Return(err)
-				return r
+			cmd: func(ctx context.Context) error {
+				return err
 			},
-			fallback: func() *mgoresilience.Runner {
-				// Expect fallback will be called.
-				r := &mgoresilience.Runner{}
-				r.On("Run", mock.Anything).Return(err)
-				return r
+
+			fallback: func(called bool) goresilience.Func {
+				return func(context.Context) error {
+					called = true
+					return err
+				}
 			},
 			expErr: err,
 		},
 		{
 			name: "Fallback shouldn't be called in case the runner doesn't fail.",
-			runner: func() *mgoresilience.Runner {
-				r := &mgoresilience.Runner{}
-				r.On("Run", mock.Anything).Return(nil)
-				return r
+			cmd: func(ctx context.Context) error {
+				return nil
 			},
-			fallback: func() *mgoresilience.Runner {
-				// Expect fallback not called.
-				return &mgoresilience.Runner{}
+
+			fallback: func(called bool) goresilience.Func {
+				return func(context.Context) error {
+					called = true
+					return nil
+				}
 			},
 			expErr: nil,
 		},
@@ -69,16 +67,13 @@ func TestFallback(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			// Mocks.
-			mf := test.fallback()
-			mr := test.runner()
-
 			// Run & check.
-			runner := fallback.New(mf, mr)
-			err := runner.Run(context.TODO())
+			called := false
+			runner := fallback.New(test.fallback(called), nil)
+			err := runner.Run(context.TODO(), test.cmd)
 
 			if assert.Equal(test.expErr, err) {
-				mf.AssertExpectations(t)
+				assert.Equal(test.expFallbackCall, called)
 			}
 		})
 	}

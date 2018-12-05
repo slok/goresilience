@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/retry"
-	"github.com/stretchr/testify/assert"
 )
 
 var err = errors.New("wanted error")
@@ -29,12 +30,10 @@ func (c *counterFailer) Run(ctx context.Context) error {
 }
 
 func TestRetryResult(t *testing.T) {
-	//err := errors.New("test error")
-
 	tests := []struct {
 		name      string
 		cfg       retry.Config
-		runner    goresilience.Runner
+		getF      func() goresilience.Func
 		expResult string
 		expErr    error
 	}{
@@ -45,7 +44,10 @@ func TestRetryResult(t *testing.T) {
 				DisableBackoff: true,
 				Times:          3,
 			},
-			runner: &counterFailer{notFailOnAttemp: 4},
+			getF: func() goresilience.Func {
+				c := &counterFailer{notFailOnAttemp: 4}
+				return c.Run
+			},
 			expErr: nil,
 		},
 		{
@@ -55,7 +57,10 @@ func TestRetryResult(t *testing.T) {
 				DisableBackoff: true,
 				Times:          3,
 			},
-			runner: &counterFailer{notFailOnAttemp: 5},
+			getF: func() goresilience.Func {
+				c := &counterFailer{notFailOnAttemp: 5}
+				return c.Run
+			},
 			expErr: err,
 		},
 	}
@@ -64,8 +69,8 @@ func TestRetryResult(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			exec := retry.New(test.cfg, test.runner)
-			err := exec.Run(context.TODO())
+			cmd := retry.New(test.cfg, nil)
+			err := cmd.Run(context.TODO(), test.getF())
 
 			assert.Equal(test.expErr, err)
 		})
@@ -135,11 +140,11 @@ func TestConstantRetry(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			runner := &patternTimer{}
-			exec := retry.New(test.cfg, runner)
-			exec.Run(context.TODO())
+			exec := retry.New(test.cfg, nil)
+			pt := &patternTimer{}
+			exec.Run(context.TODO(), pt.Run)
 
-			assert.Equal(test.expWaitPattern, runner.waitPattern)
+			assert.Equal(test.expWaitPattern, pt.waitPattern)
 		})
 	}
 }
@@ -170,8 +175,8 @@ func TestBackoffJitterRetry(t *testing.T) {
 			// Let's do N iterations of the same process.
 			for i := 0; i < test.times; i++ {
 				runner := &patternTimer{}
-				exec := retry.New(test.cfg, runner)
-				exec.Run(context.TODO())
+				exec := retry.New(test.cfg, nil)
+				exec.Run(context.TODO(), runner.Run)
 
 				// Check that the wait pattern results (diferent from 0)
 				// are different, this guarantees that at least we are waiting

@@ -6,6 +6,7 @@ import (
 
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
+	runnerutils "github.com/slok/goresilience/internal/util/runner"
 )
 
 const (
@@ -23,7 +24,9 @@ type result struct {
 // a runner when some time passes using the context.
 // use 0 timeout for default timeout.
 func NewStatic(timeout time.Duration, r goresilience.Runner) goresilience.Runner {
-	return goresilience.RunnerFunc(func(ctx context.Context) error {
+	r = runnerutils.Sanitize(r)
+
+	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
 		// Fallback settings to defaults.
 		if timeout == 0 {
 			timeout = defaultTimeout
@@ -37,7 +40,7 @@ func NewStatic(timeout time.Duration, r goresilience.Runner) goresilience.Runner
 		// Run the command
 		errc := make(chan error)
 		go func() {
-			errc <- r.Run(ctx)
+			errc <- r.Run(ctx, f)
 		}()
 
 		// Wait until the deadline has been reached or w have a result.
