@@ -20,28 +20,34 @@ const (
 
 // Config is the configuration of the circuit breaker.
 type Config struct {
-	// ErrorPercentThresholdToOpen is the minimum percentage of errors where the circuit
-	// will pass to open phase.
+	// ErrorPercentThresholdToOpen is the error percent based on total execution requests
+	// to pass from closed to open state.
 	ErrorPercentThresholdToOpen int
-	// MinimumRequestToOpen is the minimum quantity of execution reuqest needed
+	// MinimumRequestToOpen is the minimum quantity of execution request needed
 	// to evaluate the percent of errors to allow opening the circuit.
 	MinimumRequestToOpen int
-
-	// SuccessRequiredOnHalfOpen are the number of continous successes the
-	// circuitbreaker will check when is on halfopen state before closing the
+	// SuccessfulRequiredOnHalfOpen are the number of request (and successes) the
+	// circuitbreaker will check when is on half open state before closing the
 	// circuit again.
-	SuccessRequiredOnHalfOpen int
-
-	// WaitDurationInOpenState is the duration the circuit will be in
+	SuccessfulRequiredOnHalfOpen int
+	// WaitDurationInOpenState is how long the circuit will be in
 	// open state before moving to half open state.
 	WaitDurationInOpenState time.Duration
+	// Sliding window settings
+	// Example: window size 10 and 1s bucket duration will store the data of the latest 10s
+	// to select the state of the circuit.
+	//
+	// MetricsSlidingWindowBucketQuantity is the number of buckets that will have the window to
+	// store the metrics. This window will delete the oldest bucket and create new
+	// This way the circuit breaker only uses the latest data to get the state of the circuit.
+	MetricsSlidingWindowBucketQuantity int
+	// MetricsBucketDuration is the duration for a bucket to store the metrics that collects,
+	// This way the circuit will have a window of N buckets of T duration each.
+	MetricsBucketDuration time.Duration
 }
 
+// defaults will use the default settings from Netflix Hystrix.
 func (c *Config) defaults() {
-	if c.WaitDurationInOpenState == 0 {
-		c.WaitDurationInOpenState = 5 * time.Second
-	}
-
 	if c.ErrorPercentThresholdToOpen == 0 {
 		c.ErrorPercentThresholdToOpen = 50
 	}
@@ -50,8 +56,20 @@ func (c *Config) defaults() {
 		c.MinimumRequestToOpen = 20
 	}
 
-	if c.SuccessRequiredOnHalfOpen == 0 {
-		c.SuccessRequiredOnHalfOpen = 1
+	if c.SuccessfulRequiredOnHalfOpen == 0 {
+		c.SuccessfulRequiredOnHalfOpen = 1
+	}
+
+	if c.WaitDurationInOpenState == 0 {
+		c.WaitDurationInOpenState = 5 * time.Second
+	}
+
+	if c.MetricsSlidingWindowBucketQuantity == 0 {
+		c.MetricsSlidingWindowBucketQuantity = 10
+	}
+
+	if c.MetricsBucketDuration == 0 {
+		c.MetricsBucketDuration = 1 * time.Second
 	}
 }
 
@@ -65,13 +83,41 @@ type circuitbreaker struct {
 }
 
 // New returns a new circuit breaker runner.
-// TODO: explanation.
+//
+// The circuit breaker has 3 states, close, open and half open.
+//
+// The circuit starts in closed state, this means that the
+// sent funcs will be excuted, the circuit will record the results
+// of the executed funcs.
+//
+// This records will be based on a sliding window divided in buckets
+// of a T duration (example, 10 buckets of 1s each, will record the
+// results of the last 10s, every second a new bucket will be created
+// and the oldest bucket of the 10 buckets will be deleted).
+//
+// Being in closed state... when the error percent is greater that the
+// configured threshold in `ErrorPercentThresholdToOpen` setting
+// and at least it made N executions configured in `MinimumRequestToOpen`
+// will move to open state.
+//
+// Being in open state the circuit will return directly an error without
+// executing. When the circuit has been in open state for a T duration
+// configured in `WaitDurationInOpenState` will move to half open state.
+//
+// being in half open state... the circuit will allow executing as being
+// closed except that the measurements are different, in this case it
+// will check that when N executions have been made (configured in
+// `SuccessfulRequiredOnHalfOpen`) if all of them have been successfull,
+// if all have been ok it will move to closed state, if not it will move
+// to open state.
+//
+// Note: On every state change the recorded metrics will be reset.
 func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 	cfg.defaults()
 
 	return &circuitbreaker{
 		state:        stateClosed,
-		recorder:     &counter{},
+		recorder:     newBucketWindow(cfg.MetricsSlidingWindowBucketQuantity, cfg.MetricsBucketDuration),
 		stateStarted: time.Now(),
 		cfg:          cfg,
 		runner:       runnerutils.Sanitize(r),
@@ -116,7 +162,7 @@ func (c *circuitbreaker) postDecideState() {
 	switch state {
 	case stateHalfOpen:
 		// If we haven't done enough requests in half open then we don't evaluate.
-		if c.recorder.totalRequests() >= float64(c.cfg.SuccessRequiredOnHalfOpen) {
+		if c.recorder.totalRequests() >= float64(c.cfg.SuccessfulRequiredOnHalfOpen) {
 			state := stateOpen
 			// If the requests have been ok then close circuit, if not we should open.
 			if c.recorder.errorRate() <= 0 {

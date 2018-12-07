@@ -149,6 +149,90 @@ func TestCircuitBreaker(t *testing.T) {
 			},
 			expErr: nil,
 		},
+		{
+			name: "The sliding window should forget the old recorded settings (short window enought to forget).",
+			cfg: circuitbreaker.Config{
+				ErrorPercentThresholdToOpen:        30,
+				MinimumRequestToOpen:               10,
+				SuccessfulRequiredOnHalfOpen:       1,
+				WaitDurationInOpenState:            5 * time.Millisecond,
+				MetricsSlidingWindowBucketQuantity: 5,
+				MetricsBucketDuration:              5 * time.Millisecond,
+			},
+			f: func(cb goresilience.Runner) goresilience.Func {
+				// Close the circuit first.
+				for i := 0; i < 10; i++ {
+					cb.Run(context.TODO(), errf)
+				}
+
+				// Wait the circuit in open state to go in half open state.
+				time.Sleep(6 * time.Millisecond)
+
+				// Open the circuit with lots of good requests.
+				for i := 0; i < 100; i++ {
+					cb.Run(context.TODO(), okf)
+				}
+
+				// Wait to reset the window.
+				time.Sleep(30 * time.Millisecond)
+
+				// Try to close again with the same number of errors.
+				// This should closed, this means that the 100 good
+				// request that we made before don't count for the
+				// percent rate threshold. So we can assure that the
+				// sliding window has worked and it forgot the previous
+				// metrics.
+				for i := 0; i < 10; i++ {
+					cb.Run(context.TODO(), errf)
+				}
+
+				cb.Run(context.TODO(), okf)
+				return okf
+			},
+			expErr: errors.ErrCircuitOpen,
+		},
+		{
+			name: "The sliding window should forget the old recorded settings (big window not enought to forget).",
+			cfg: circuitbreaker.Config{
+				ErrorPercentThresholdToOpen:        30,
+				MinimumRequestToOpen:               10,
+				SuccessfulRequiredOnHalfOpen:       1,
+				WaitDurationInOpenState:            5 * time.Millisecond,
+				MetricsSlidingWindowBucketQuantity: 100,
+				MetricsBucketDuration:              5 * time.Millisecond,
+			},
+			f: func(cb goresilience.Runner) goresilience.Func {
+				// Close the circuit first.
+				for i := 0; i < 10; i++ {
+					cb.Run(context.TODO(), errf)
+				}
+
+				// Wait the circuit in open state to go in half open state.
+				time.Sleep(6 * time.Millisecond)
+
+				// Open the circuit with lots of good requests.
+				for i := 0; i < 100; i++ {
+					cb.Run(context.TODO(), okf)
+				}
+
+				// Wait to reset the window
+				time.Sleep(30 * time.Millisecond)
+
+				// Try to close again with the same number of errors.
+				// This should not close, this means that the 100 good
+				// request that we made before are on the record regsitry
+				// and count for the percent threshold. So we can assure
+				// that the sliding window has worked and it dind't forgot
+				// the previous metrics because it didn't slide yet.
+				for i := 0; i < 10; i++ {
+					cb.Run(context.TODO(), errf)
+				}
+
+				cb.Run(context.TODO(), okf)
+				return okf
+			},
+			expErr: nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -159,6 +243,38 @@ func TestCircuitBreaker(t *testing.T) {
 			err := cb.Run(context.TODO(), test.f(cb))
 
 			assert.Equal(test.expErr, err)
+		})
+	}
+}
+
+func BenchmarkCircuitBreaker(b *testing.B) {
+	b.StopTimer()
+
+	benchs := []struct {
+		name string
+		f    func(cb goresilience.Runner) goresilience.Func
+		cfg  circuitbreaker.Config
+	}{
+		{
+			name: "benchmark with default settings.",
+			f: func(cb goresilience.Runner) goresilience.Func {
+				return errf
+			},
+			cfg: circuitbreaker.Config{},
+		},
+	}
+
+	for _, bench := range benchs {
+		b.Run(bench.name, func(b *testing.B) {
+			// Prepare.
+			cb := circuitbreaker.New(bench.cfg, nil)
+			f := bench.f(cb)
+			// execute the benhmark.
+			for n := 0; n < b.N; n++ {
+				b.StartTimer()
+				cb.Run(context.TODO(), f)
+				b.StopTimer()
+			}
 		})
 	}
 }
