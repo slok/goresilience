@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/bulkhead"
 )
 
@@ -14,7 +15,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 	tests := []struct {
 		name          string
 		cfg           bulkhead.StaticConfig
-		runFunc       func() func(ctx context.Context) error
+		runFunc       func() goresilience.Func
 		timesToCall   int
 		expTotalCalls int
 		expTotalErrs  int
@@ -22,7 +23,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 		{
 			name: "A bulkhead without timeout should complete all runs.",
 			cfg:  bulkhead.StaticConfig{},
-			runFunc: func() func(ctx context.Context) error {
+			runFunc: func() goresilience.Func {
 				return func(ctx context.Context) error {
 					time.Sleep(2 * time.Millisecond)
 					return nil
@@ -38,7 +39,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 				Workers:     10,
 				MaxWaitTime: 5 * time.Millisecond,
 			},
-			runFunc: func() func(ctx context.Context) error {
+			runFunc: func() goresilience.Func {
 				return func(ctx context.Context) error {
 					time.Sleep(10 * time.Millisecond)
 					return nil
@@ -54,7 +55,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 				Workers:     17,
 				MaxWaitTime: 11 * time.Millisecond,
 			},
-			runFunc: func() func(ctx context.Context) error {
+			runFunc: func() goresilience.Func {
 				return func(ctx context.Context) error {
 					time.Sleep(10 * time.Millisecond)
 					return nil
