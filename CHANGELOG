@@ -1,3 +1,6 @@
 ## 0.x.x / xxxx-xx-xx
 
-* 
+* Add bulkhead.
+* Add retry.
+* Add static timeout.
+* Add execution API.
