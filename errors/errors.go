@@ -12,4 +12,6 @@ var (
 	// to be executed, for example if a worker pool has been busy and the execution object
 	// has been waiting to much for being picked by a pool worker.
 	ErrTimeoutWaitingForExecution = errors.New("timeout while waiting for execution")
+	// ErrCircuitOpen will be used when a a circuit breaker is open.
+	ErrCircuitOpen = errors.New("request rejected due to the circuit breaker being open")
 )
