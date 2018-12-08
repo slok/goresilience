@@ -194,7 +194,6 @@ func TestBackoffJitterRetry(t *testing.T) {
 					occurrences[key] = struct{}{}
 				}
 			}
-			fmt.Printf("%#v", occurrences)
 		})
 	}
 }
