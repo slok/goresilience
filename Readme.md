@@ -31,6 +31,7 @@ Also one of the key parts of goreslience is the extension to create new runners 
 - [retry]: will retry the configured number of times using exponential backoff.
 - [timeout]
   - static: Static timeout timeouts using a static duration.
+- [chaos]: Is a failure injector, will inject latency and errors on demand for chaos engineering purposes.
 
 ## Architecture
 

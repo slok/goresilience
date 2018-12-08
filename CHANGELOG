@@ -1,5 +1,6 @@
 ## 0.x.x / xxxx-xx-xx
 
+* Add failure injector.
 * Add circuit breaker.
 * Add bulkhead.
 * Add retry.

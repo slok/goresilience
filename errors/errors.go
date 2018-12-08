@@ -14,4 +14,6 @@ var (
 	ErrTimeoutWaitingForExecution = errors.New("timeout while waiting for execution")
 	// ErrCircuitOpen will be used when a a circuit breaker is open.
 	ErrCircuitOpen = errors.New("request rejected due to the circuit breaker being open")
+	// ErrFailureInjected will be used when the chaos runner decides to inject error failure.
+	ErrFailureInjected = errors.New("failure injected on purpose")
 )
