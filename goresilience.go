@@ -1,3 +1,11 @@
+// Package goresilience is a framework/lirbary of utilities to improve the resilience of
+// programs easily.
+//
+// The library is based on `goresilience.Runner` interface, this runners can be
+// chained using the decorator pattern (like std library `http.Handler` interface).
+// This makes the library being extensible, flexible and clean to use.
+// The runners can be chained like if they were middlewares that could act on
+// all the execution process of the `goresilience.Func`.
 package goresilience
 
 import (
