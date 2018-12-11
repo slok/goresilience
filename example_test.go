@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/slok/goresilience/metrics"
 	"github.com/slok/goresilience/retry"
 	"github.com/slok/goresilience/timeout"
 )
@@ -121,4 +125,39 @@ func Example_structresult() {
 	}
 
 	fmt.Printf("%s %s is %s", res.name, res.lastName, res.result)
+}
+
+// Will measure all the execution through the runners uwing prometheus metrics.
+func Example_metrics() {
+	// Create a prometheus registry and expose that registry over http.
+	promreg := prometheus.NewRegistry()
+	go func() {
+		http.ListenAndServe(":8081", promhttp.HandlerFor(promreg, promhttp.HandlerOpts{}))
+	}()
+
+	// Create the metrics recorder for our runner.
+	metricsRecorder := metrics.NewPrometheusRecorder(promreg)
+
+	// Create our chain with our metircs wrapper.
+	cmd := metrics.NewMeasuredRunner("example-metrics", metricsRecorder,
+		retry.New(retry.Config{},
+			timeout.NewStatic(timeout.StaticConfig{
+				Timeout: 100 * time.Millisecond,
+			}, nil)))
+
+	var result string
+	err := cmd.Run(context.TODO(), func(ctx context.Context) error {
+		sec := time.Now().Second()
+		if sec%2 == 0 {
+			return fmt.Errorf("error because %d is even", sec)
+		}
+		return nil
+	})
+
+	// We could fallback to get a Hystrix like behaviour.
+	if err != nil {
+		result = "fallback result"
+	}
+
+	fmt.Printf("result is: %s\n", result)
 }

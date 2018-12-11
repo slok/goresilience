@@ -9,6 +9,12 @@ import (
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
 	runnerutils "github.com/slok/goresilience/internal/util/runner"
+	"github.com/slok/goresilience/metrics"
+)
+
+const (
+	kindLatency = "latency"
+	kindError   = "error"
 )
 
 // Injector will control how the faults will be injected in the chaos runner.
@@ -70,6 +76,8 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 }
 
 func (f *failureInjector) Run(ctx context.Context, fn goresilience.Func) (err error) {
+	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
+
 	// Measure the execution requests and errors.
 	defer func() {
 		f.mu.Lock()
@@ -86,6 +94,7 @@ func (f *failureInjector) Run(ctx context.Context, fn goresilience.Func) (err er
 	// Inject latency attack.
 	lat := f.cfg.Injector.latency
 	if lat > 0 {
+		metricsRecorder.IncChaosInjectedFailure(kindLatency)
 		time.Sleep(lat)
 	}
 
@@ -95,6 +104,7 @@ func (f *failureInjector) Run(ctx context.Context, fn goresilience.Func) (err er
 	currentErrPerc = int((float64(f.errs) / float64(f.total)) * 100)
 	f.mu.Unlock()
 	if currentErrPerc < f.cfg.Injector.errorPercent {
+		metricsRecorder.IncChaosInjectedFailure(kindError)
 		return errors.ErrFailureInjected
 	}
 

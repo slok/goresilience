@@ -7,6 +7,7 @@ import (
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
 	runnerutils "github.com/slok/goresilience/internal/util/runner"
+	"github.com/slok/goresilience/metrics"
 )
 
 // StaticConfig is the configuration of the Static Bulkhead runner.
@@ -66,11 +67,15 @@ func NewStatic(cfg StaticConfig, r goresilience.Runner) goresilience.Runner {
 }
 
 func (s staticBulkhead) Run(ctx context.Context, f goresilience.Func) error {
+	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
+
 	resC := make(chan error) // The result channel.
 	job := func() {
+		metricsRecorder.IncBulkheadProcessed()
 		resC <- s.runner.Run(ctx, f)
 	}
 
+	metricsRecorder.IncBulkheadQueued()
 	if s.cfg.MaxWaitTime == 0 {
 		select {
 		// Send the function to the worker
@@ -81,6 +86,7 @@ func (s staticBulkhead) Run(ctx context.Context, f goresilience.Func) error {
 	} else {
 		select {
 		case <-time.After(s.cfg.MaxWaitTime):
+			metricsRecorder.IncBulkheadTimeout()
 			return errors.ErrTimeoutWaitingForExecution
 		// Send the function to the worker
 		case s.jobC <- job:

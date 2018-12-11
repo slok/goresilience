@@ -8,6 +8,7 @@ import (
 
 	"github.com/slok/goresilience"
 	runnerutils "github.com/slok/goresilience/internal/util/runner"
+	"github.com/slok/goresilience/metrics"
 )
 
 // Config is the configuration used for the retry Runner.
@@ -43,9 +44,15 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 	// https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
 	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
 		var err error
+		metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
 		// Start the attemps. (it's 1 + the number of retries.)
 		for i := 0; i <= cfg.Times; i++ {
+			// Only measure the retries.
+			if i != 0 {
+				metricsRecorder.IncRetry()
+			}
+
 			err = r.Run(ctx, f)
 			if err == nil {
 				return nil

@@ -8,14 +8,15 @@ import (
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
 	runnerutils "github.com/slok/goresilience/internal/util/runner"
+	"github.com/slok/goresilience/metrics"
 )
 
-type state int
+type state string
 
 const (
-	stateOpen state = iota
-	stateHalfOpen
-	stateClosed
+	stateOpen     state = "open"
+	stateHalfOpen state = "halfopen"
+	stateClosed   state = "closed"
 )
 
 // Config is the configuration of the circuit breaker.
@@ -71,6 +72,7 @@ func (c *Config) defaults() {
 	if c.MetricsBucketDuration == 0 {
 		c.MetricsBucketDuration = 1 * time.Second
 	}
+
 }
 
 type circuitbreaker struct {
@@ -125,8 +127,10 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 }
 
 func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {
+	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
+
 	// Decide state before executing.
-	c.preDecideState()
+	c.preDecideState(metricsRecorder)
 
 	// Execute based on the current state.
 	err := c.execute(ctx, f)
@@ -135,28 +139,28 @@ func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {
 	c.recorder.inc(err)
 
 	// Decide state after executing.
-	c.postDecideState()
+	c.postDecideState(metricsRecorder)
 
 	return err
 }
 
 // preDecideState are the state decision that will be made before the execution. Usually
 // this will be executed for the decision state based on time (more than T duration, after T...)
-func (c *circuitbreaker) preDecideState() {
+func (c *circuitbreaker) preDecideState(metricsRec metrics.Recorder) {
 	state := c.getState()
 	switch state {
 	case stateOpen:
 		// Check if the circuit has been the required time in closed. If yes then
 		// we move to half open state.
 		if c.sinceStateStart() > c.cfg.WaitDurationInOpenState {
-			c.moveState(stateHalfOpen)
+			c.moveState(stateHalfOpen, metricsRec)
 		}
 	}
 }
 
 // postDecideState are the state decision that will be made after the execution. Usually
 // this will be executed for the decision state based on measurements (execution errors, totals...)
-func (c *circuitbreaker) postDecideState() {
+func (c *circuitbreaker) postDecideState(metricsRec metrics.Recorder) {
 	state := c.getState()
 
 	switch state {
@@ -169,12 +173,12 @@ func (c *circuitbreaker) postDecideState() {
 				state = stateClosed
 			}
 
-			c.moveState(state)
+			c.moveState(state, metricsRec)
 		}
 	case stateClosed:
 		// Check if we need to go to open state. If we bypassed the thresholds trip the circuit.
 		if c.recorder.totalRequests() >= float64(c.cfg.MinimumRequestToOpen) && c.recorder.errorRate() >= float64(c.cfg.MinimumRequestToOpen)/100 {
-			c.moveState(stateOpen)
+			c.moveState(stateOpen, metricsRec)
 		}
 	}
 
@@ -205,12 +209,14 @@ func (c *circuitbreaker) sinceStateStart() time.Duration {
 	return time.Since(c.stateStarted)
 }
 
-func (c *circuitbreaker) moveState(state state) {
+func (c *circuitbreaker) moveState(state state, metricsRec metrics.Recorder) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Only change if the state changed.
 	if c.state != state {
+		metricsRec.IncCircuitbreakerState(string(state))
+
 		c.state = state
 		c.stateStarted = time.Now()
 		c.recorder.reset()
