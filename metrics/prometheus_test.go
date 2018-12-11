@@ -160,7 +160,7 @@ func TestPrometheus(t *testing.T) {
 			assert := assert.New(t)
 
 			reg := prometheus.NewRegistry()
-			p := metrics.NewPrometheus(reg)
+			p := metrics.NewPrometheusRecorder(reg)
 
 			test.recordMetrics(p)
 

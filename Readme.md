@@ -7,11 +7,11 @@ Goresilience is a Go toolkit to increase the resilence of applications. Inspired
 - Increase resilence of the programs.
 - Easy to extend, test and with clean desing.
 - Go idiomatic.
-- Empower the decorator pattern (middleware, wrapper), like Go's http.Handler does.
-- Ability to create custom resilence flows, simpled, advanced, specific... by combining different pieces
+- Use the decorator pattern (middleware, wrapper), like Go's http.Handler does.
+- Ability to create custom resilence flows, simple, advanced, specific... by combining different runners.
 - Safety defaults and ready with the most common execution flows.
 - Not couple to any framework/library.
-- Prometheus/openmetrics metrics as first class citizen.
+- Prometheus/Openmetrics metrics as first class citizen.
 
 ## Motivation
 
@@ -35,9 +35,9 @@ Also one of the key parts of goreslience is the extension to create new runners 
 
 ## Architecture
 
-At its core, goresilience is based on a very simple idea, the `Runner` interface, `Runner` interface is the unit of execution, its accepts a `context.Context`, a `goresilience.Func` and returns an `error`. The library comes with decorators that implement this interface and gives us the ability to create a resilient execution flow, customize with the pieces that we want and create our custom ones.
+At its core, goresilience is based on a very simple idea, the `Runner` interface, `Runner` interface is the unit of execution, its accepts a `context.Context`, a `goresilience.Func` and returns an `error`. The library comes with decorators that implement this interface and gives us the ability to create a resilient execution flow having the ability to wrap any runner to customize with the pieces that we want including custom ones not in this library.
 
-Example of a full resilient flow using some of the toolkit parts:
+Example of a full resilient flow using some of the toolkit runners:
 
 ```text
 Circuit breaker
@@ -54,7 +54,7 @@ import (
     "github.com/slok/goresilience/retry"
 )
 
-// Create our execution chain.
+// Create our execution chain (nil marks the end of the chain).
 cmd = retry.New(retry.Config{}, nil)
 
 // Execute.
@@ -68,7 +68,7 @@ err := exec.Run(context.TODO(), func(_ context.Context) error {
 })
 ```
 
-or combining in a chain, like this example were the execution will be retried, timeout and concurrency controlled:
+or combining in a chain, like this example were the execution will be retried, timeout and concurrency controlled using a bulkhead runner:
 
 ```go
 import (
@@ -77,7 +77,7 @@ import (
     "github.com/slok/goresilience/timeout"
 )
 
-// Create our execution chain.
+// Create our execution chain (nil marks the end of the chain).
 cmd =   bulkhead.NewStatic(bulkhead.StaticConfig{},
             retry.New(retry.Config{},
                 timeout.NewStatic(timeout.StaticConfig{}, nil)))
@@ -100,7 +100,7 @@ As you see, it's easy to create any combination of resilient execution flows by 
 
 You can extend the toolkit by implementing the `goresilience.Runner` interface.
 
-In this exaxmple we create a new resilience runner to make chaos engeniering that will fail at a constant rate set on the `Config.FailEveryTimes` setting:
+In this example we create a new resilience runner to make chaos engeniering that will fail at a constant rate set on the `Config.FailEveryTimes` setting:
 
 ```golang
 import (
@@ -124,6 +124,7 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
     calledTimes := 0
     // Use the RunnerFunc helper so we don't need to create a new type.
     return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
+        // We should lock the counter writes, not made because this is an example.
         calledTimes++
 
         if calledTimes == cfg.FailEveryTimes {
