@@ -14,15 +14,15 @@ const (
 	defaultTimeout = 1 * time.Second
 )
 
-// StaticConfig is the configuration of the Static timeout.
-type StaticConfig struct {
+// Config is the configuration of the timeout.
+type Config struct {
 	// Timeout is the duration that will be waited before giving as a timeouted execution.
 	Timeout time.Duration
 }
 
-func (s *StaticConfig) defaults() {
-	if s.Timeout <= 0 {
-		s.Timeout = defaultTimeout
+func (c *Config) defaults() {
+	if c.Timeout <= 0 {
+		c.Timeout = defaultTimeout
 	}
 }
 
@@ -33,10 +33,10 @@ type result struct {
 	err      error
 }
 
-// NewStatic will wrap a execution unit that will cut the execution of
+// New will wrap a execution unit that will cut the execution of
 // a runner when some time passes using the context.
 // use 0 timeout for default timeout.
-func NewStatic(cfg StaticConfig, r goresilience.Runner) goresilience.Runner {
+func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 	cfg.defaults()
 
 	r = runnerutils.Sanitize(r)

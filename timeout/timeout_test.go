@@ -13,18 +13,18 @@ import (
 	"github.com/slok/goresilience/timeout"
 )
 
-func TestStaticLatency(t *testing.T) {
+func TestTimeout(t *testing.T) {
 	err := errors.New("wanted error")
 
 	tests := []struct {
 		name   string
-		cfg    timeout.StaticConfig
+		cfg    timeout.Config
 		f      goresilience.Func
 		expErr error
 	}{
 		{
 			name: "A command that has been run without timeout shouldn't return and error.",
-			cfg: timeout.StaticConfig{
+			cfg: timeout.Config{
 				Timeout: 1 * time.Second,
 			},
 			f: func(ctx context.Context) error {
@@ -34,7 +34,7 @@ func TestStaticLatency(t *testing.T) {
 		},
 		{
 			name: "A command that has been run without timeout should return aerror result).",
-			cfg: timeout.StaticConfig{
+			cfg: timeout.Config{
 				Timeout: 1 * time.Second,
 			},
 			f: func(ctx context.Context) error {
@@ -44,7 +44,7 @@ func TestStaticLatency(t *testing.T) {
 		},
 		{
 			name: "A command that has been run with timeout should return a fallback and don't let the function finish and return the err result.",
-			cfg: timeout.StaticConfig{
+			cfg: timeout.Config{
 				Timeout: 1,
 			},
 			f: func(ctx context.Context) error {
@@ -59,7 +59,7 @@ func TestStaticLatency(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cmd := timeout.NewStatic(test.cfg, nil)
+			cmd := timeout.New(test.cfg, nil)
 			err := cmd.Run(context.TODO(), test.f)
 
 			assert.Equal(test.expErr, err)

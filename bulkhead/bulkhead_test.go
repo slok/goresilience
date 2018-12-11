@@ -11,10 +11,10 @@ import (
 	"github.com/slok/goresilience/bulkhead"
 )
 
-func TestStaticBulkheadTimeout(t *testing.T) {
+func TestBulkheadTimeout(t *testing.T) {
 	tests := []struct {
 		name          string
-		cfg           bulkhead.StaticConfig
+		cfg           bulkhead.Config
 		runFunc       func() goresilience.Func
 		timesToCall   int
 		expTotalCalls int
@@ -22,7 +22,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 	}{
 		{
 			name: "A bulkhead without timeout should complete all runs.",
-			cfg:  bulkhead.StaticConfig{},
+			cfg:  bulkhead.Config{},
 			runFunc: func() goresilience.Func {
 				return func(ctx context.Context) error {
 					time.Sleep(2 * time.Millisecond)
@@ -35,7 +35,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 		},
 		{
 			name: "A bulkhead with timeout should timeout the funcs waiting to run if they have waited too much.",
-			cfg: bulkhead.StaticConfig{
+			cfg: bulkhead.Config{
 				Workers:     10,
 				MaxWaitTime: 5 * time.Millisecond,
 			},
@@ -51,7 +51,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 		},
 		{
 			name: "A bulkhead with timeout should timeout the funcs waiting to run if they have waited too much (allow 2 batches).",
-			cfg: bulkhead.StaticConfig{
+			cfg: bulkhead.Config{
 				Workers:     17,
 				MaxWaitTime: 11 * time.Millisecond,
 			},
@@ -71,7 +71,7 @@ func TestStaticBulkheadTimeout(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			bk := bulkhead.NewStatic(test.cfg, nil)
+			bk := bulkhead.New(test.cfg, nil)
 			results := make(chan error)
 			// We call N times using our bulkhead and wait until all have finished.
 			for i := 0; i < test.timesToCall; i++ {

@@ -6,5 +6,5 @@
 * Add circuit breaker.
 * Add bulkhead.
 * Add retry.
-* Add static timeout.
+* Add timeout.
 * Add execution API.

@@ -42,9 +42,9 @@ func BenchmarkMeasuredRunner(b *testing.B) {
 		b.Run(bench.name, func(b *testing.B) {
 			// Prepare the runner.
 			runner := circuitbreaker.New(circuitbreaker.Config{},
-				bulkhead.NewStatic(bulkhead.StaticConfig{},
+				bulkhead.New(bulkhead.Config{},
 					retry.New(retry.Config{},
-						timeout.NewStatic(timeout.StaticConfig{}, nil))))
+						timeout.New(timeout.Config{}, nil))))
 
 			runner = bench.wrapper(runner)
 

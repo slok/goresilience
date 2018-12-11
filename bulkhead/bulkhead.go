@@ -10,8 +10,8 @@ import (
 	"github.com/slok/goresilience/metrics"
 )
 
-// StaticConfig is the configuration of the Static Bulkhead runner.
-type StaticConfig struct {
+// Config is the configuration of the Bulkhead runner.
+type Config struct {
 	// Workers is the number of workers in the execution pool.
 	Workers int
 	// MaxWaitTime is the max time a runner will wait to execute before
@@ -21,75 +21,75 @@ type StaticConfig struct {
 	StopC chan (struct{})
 }
 
-func (s *StaticConfig) defaults() {
-	if s.Workers <= 0 {
-		s.Workers = 15
+func (c *Config) defaults() {
+	if c.Workers <= 0 {
+		c.Workers = 15
 	}
 
-	if s.MaxWaitTime < 0 {
-		s.MaxWaitTime = 0
+	if c.MaxWaitTime < 0 {
+		c.MaxWaitTime = 0
 	}
 
-	if s.StopC == nil {
-		s.StopC = make(chan struct{})
+	if c.StopC == nil {
+		c.StopC = make(chan struct{})
 	}
 }
 
-type staticBulkhead struct {
-	cfg    StaticConfig
+type bulkhead struct {
+	cfg    Config
 	runner goresilience.Runner
 	jobC   chan func() // jobC is the channel used to send job to the worker pool.
 }
 
-// NewStatic returns a new buklhead static runner.
-// Static bulkhead will limit the execution of execution blocks based on
-// a static configuration. The bulkhead implementation will be made
+// New returns a new buklhead runner.
+// Bulkhead will limit the execution of execution blocks based on
+// a configuration. The bulkhead implementation will be made
 // using a worker of pools, the workers will pick these execution blocks
 // when they are free, they will execute the logic and pick another block
 // the exeuction block will wait to be picked by the workers and if they
 // have a max wait time, if that time is passed they will be dropped
 // from the execution queue.
-func NewStatic(cfg StaticConfig, r goresilience.Runner) goresilience.Runner {
+func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 	r = runnerutils.Sanitize(r)
 
 	cfg.defaults()
 
-	s := &staticBulkhead{
+	b := &bulkhead{
 		cfg:    cfg,
 		runner: r,
 		jobC:   make(chan func()),
 	}
 
 	// Our workers in background.
-	go s.startWorkerPool()
+	go b.startWorkerPool()
 
-	return s
+	return b
 }
 
-func (s staticBulkhead) Run(ctx context.Context, f goresilience.Func) error {
+func (b bulkhead) Run(ctx context.Context, f goresilience.Func) error {
 	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
 	resC := make(chan error) // The result channel.
 	job := func() {
 		metricsRecorder.IncBulkheadProcessed()
-		resC <- s.runner.Run(ctx, f)
+		resC <- b.runner.Run(ctx, f)
 	}
 
 	metricsRecorder.IncBulkheadQueued()
-	if s.cfg.MaxWaitTime == 0 {
+	if b.cfg.MaxWaitTime == 0 {
 		select {
 		// Send the function to the worker
-		case s.jobC <- job:
+		case b.jobC <- job:
 			// Wait for the result on the result channel.
 			return <-resC
 		}
 	} else {
 		select {
-		case <-time.After(s.cfg.MaxWaitTime):
+		case <-time.After(b.cfg.MaxWaitTime):
 			metricsRecorder.IncBulkheadTimeout()
 			return errors.ErrTimeoutWaitingForExecution
 		// Send the function to the worker
-		case s.jobC <- job:
+		case b.jobC <- job:
 			// Wait for the result on the result channel.
 			return <-resC
 		}
@@ -97,15 +97,15 @@ func (s staticBulkhead) Run(ctx context.Context, f goresilience.Func) error {
 }
 
 // startWorkerPool will start the execution of the worker pool.
-func (s staticBulkhead) startWorkerPool() {
-	for i := 0; i < s.cfg.Workers; i++ {
+func (b bulkhead) startWorkerPool() {
+	for i := 0; i < b.cfg.Workers; i++ {
 		// Run worker.
 		go func() {
 			for {
 				select {
-				case <-s.cfg.StopC:
+				case <-b.cfg.StopC:
 					return
-				case job := <-s.jobC:
+				case job := <-b.jobC:
 					job()
 				}
 			}

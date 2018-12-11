@@ -57,7 +57,7 @@ func Example_basic() {
 func Example_chain() {
 	// Create our chain, first the retry and then the timeout with 100ms.
 	cmd := retry.New(retry.Config{},
-		timeout.NewStatic(timeout.StaticConfig{
+		timeout.New(timeout.Config{
 			Timeout: 100 * time.Millisecond,
 		}, nil))
 
@@ -141,7 +141,7 @@ func Example_metrics() {
 	// Create our chain with our metircs wrapper.
 	cmd := metrics.NewMeasuredRunner("example-metrics", metricsRecorder,
 		retry.New(retry.Config{},
-			timeout.NewStatic(timeout.StaticConfig{
+			timeout.New(timeout.Config{
 				Timeout: 100 * time.Millisecond,
 			}, nil)))
 

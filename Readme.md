@@ -25,12 +25,10 @@ Also one of the key parts of goreslience is the extension to create new runners 
 
 ## Toolkit
 
-- [bulkhead]
-  - static: Static bulkhead controls the execution concurrency by limiting to a specific number of workers.
+- [bulkhead]: Bulkhead controls the execution concurrency by limiting to a specific number of workers.
 - [circuitbreaker]: The circuit breaker will fail fast if the execution fails too much, more information about how a circuit breaker works [here][circuit-breaker-url].
 - [retry]: will retry the configured number of times using exponential backoff.
-- [timeout]
-  - static: Static timeout timeouts using a static duration.
+- [timeout]: Timeout timeouts using a duration.
 - [chaos]: Is a failure injector, will inject latency and errors on demand for chaos engineering purposes.
 
 ## Architecture
@@ -78,9 +76,9 @@ import (
 )
 
 // Create our execution chain (nil marks the end of the chain).
-cmd =   bulkhead.NewStatic(bulkhead.StaticConfig{},
+cmd =   bulkhead.New(bulkhead.Config{},
             retry.New(retry.Config{},
-                timeout.NewStatic(timeout.StaticConfig{}, nil)))
+                timeout.New(timeout.Config{}, nil)))
 
 // Execute.
 calledCounter := 0
