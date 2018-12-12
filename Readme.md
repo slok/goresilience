@@ -1,6 +1,6 @@
 # Goresilience
 
-Goresilience is a Go toolkit to increase the resilence of applications. Inspired by hystrix at it's core but at the same time very different:
+Goresilience is a Go toolkit to increase the resilence of applications. Inspired by hystrix and similar libraries at it's core but at the same time very different:
 
 ## Features
 
@@ -23,13 +23,143 @@ The aim of goresilience is to use the library with the resilience runners that c
 
 Also one of the key parts of goreslience is the extension to create new runners yourself and use it in combination with the bulkhead, the circuitbreaker or any of the runners.
 
-## Toolkit
+## Getting started
 
-- [bulkhead]: Bulkhead controls the execution concurrency by limiting to a specific number of workers.
-- [circuitbreaker]: The circuit breaker will fail fast if the execution fails too much, more information about how a circuit breaker works [here][circuit-breaker-url].
-- [retry]: will retry the configured number of times using exponential backoff.
-- [timeout]: Timeout timeouts using a duration.
-- [chaos]: Is a failure injector, will inject latency and errors on demand for chaos engineering purposes.
+The usage of the library is simple. You have each of the toolkit `Runner` factories and you can use it standalone like this example where the execution will be retried if it fails:
+
+```go
+import (
+    //...
+    "github.com/slok/goresilience/retry"
+)
+
+//...
+
+// Create our execution chain (nil marks the end of the chain).
+cmd := retry.New(retry.Config{}, nil)
+
+// Execute.
+calledCounter := 0
+result := ""
+err := cmd.Run(context.TODO(), func(_ context.Context) error {
+    calledCounter++
+    if calledCounter % 2 == 0 {
+        return errors.New("you didn't expect this error")
+    }
+    result = "all ok"
+    return nil
+})
+
+if err != nil {
+    result = "not ok, but fallback"
+}
+
+//...
+```
+
+or combining in a chain, like this example were the execution will be retried timeout and concurrency controlled using a runner chain:
+
+```go
+import (
+    //...
+
+    "github.com/slok/goresilience/retry"
+    "github.com/slok/goresilience/bulkhead"
+    "github.com/slok/goresilience/timeout"
+)
+
+//...
+
+// Create our execution chain (nil marks the end of the chain).
+cmd := bulkhead.New(bulkhead.Config{},
+    retry.New(retry.Config{},
+        timeout.New(timeout.Config{}, nil)))
+
+// Execute.
+calledCounter := 0
+result := ""
+err := cmd.Run(context.TODO(), func(_ context.Context) error {
+    calledCounter++
+    if calledCounter % 2 == 0 {
+        return errors.New("you didn't expect this error")
+    }
+    result = "all ok"
+    return nil
+})
+
+if err != nil {
+    result = "not ok, but fallback"
+}
+
+//...
+```
+
+As you see, you could create any combination of resilient execution flows by combining the different runners of the toolkit.
+
+## Resilience `Runner`s
+
+### Static
+
+Static runners are the ones that based on a static configuration and don't change based on the environment (unlike the adaptive ones).
+
+#### Timeout
+
+This runner is based on timeout pattern, it will execute the `goresilience.Func` but if the execution duration is greater than a T duration timeout it will return a timeout error.
+
+Check [example][timeout-example].
+
+#### Retry
+
+This runner is based on retry pattern, it will retry the execution of `goresilience.Func` in case it failed N times.
+
+It will use a exponential backoff with some jitter (for more information check [this][amazon-retry])
+
+Check [example][retry-example].
+
+#### Bulkhead
+
+This runner is based on [bulkhead pattern][bulkhead-pattern], it will control the concurrecy of `goresilience.Func` executions using the same runner.
+
+It also can timeout if a `goresilience.Func` has been waiting too much to be executed on a queue of execution.
+
+Check [example][bulkhead-example].
+
+#### Circuit breaker
+
+This runner is based on [circuitbreaker pattern][circuit-breaker-url], it will be storing the results of the executed `goresilience.Func` in N buckets of T time to change the state of the circuit based on those measured metrics.
+
+Check [example][circuitbreaker-example].
+
+#### Chaos
+
+This runner is based on [failure injection][chaos-engineering] of errors and latency. It will inject those failures on the required executions (based on percent or all).
+
+Check [example][chaos-example].
+
+### Adaptive
+
+TODO
+
+### Other
+
+#### Metrics
+
+All the runners can be measured using a `metrics.Recorder`, but instead of passing to every runner, the runners will try to get this recorder from the context. So you can wrap any runner using `metrics.NewMeasuredRunner` and it will activate the metrics support on the wrapped runners. This should be the first runner of the chain.
+
+At this moment only [Prometheus][prometheus-url] is supported.
+
+In this [example][hystrix-example] the runners are measured.
+
+Measuring has always a performance hit (not too high), on most cases is not a problem, but there is a benchmark to see what are the numbers:
+
+```text
+BenchmarkMeasuredRunner/Without_measurement_(Dummy).-4            300000              6580 ns/op             677 B/op         12 allocs/op
+BenchmarkMeasuredRunner/With_prometheus_measurement.-4            200000             12901 ns/op             752 B/op         15 allocs/op
+```
+
+#### Hystrix-like
+
+Using the different runners a hystrix like library flow can be obtained. You can see a simple example of how it can be done on this [example][hystrix-example]
 
 ## Architecture
 
@@ -43,58 +173,7 @@ Circuit breaker
     └── Retry
 ```
 
-## How to use it
-
-The usage of the library is simple. You have each of the toolkit part factories and you can use it standalone like this example where the execution will be retried if it fails:
-
-```go
-import (
-    "github.com/slok/goresilience/retry"
-)
-
-// Create our execution chain (nil marks the end of the chain).
-cmd = retry.New(retry.Config{}, nil)
-
-// Execute.
-calledCounter := 0
-err := exec.Run(context.TODO(), func(_ context.Context) error {
-    calledCounter++
-    if calledCounter % 2 == 0 {
-        return errors.New("you didn't expect this error")
-    }
-    return nil
-})
-```
-
-or combining in a chain, like this example were the execution will be retried, timeout and concurrency controlled using a bulkhead runner:
-
-```go
-import (
-    "github.com/slok/goresilience/retry"
-    "github.com/slok/goresilience/bulkhead"
-    "github.com/slok/goresilience/timeout"
-)
-
-// Create our execution chain (nil marks the end of the chain).
-cmd =   bulkhead.New(bulkhead.Config{},
-            retry.New(retry.Config{},
-                timeout.New(timeout.Config{}, nil)))
-
-// Execute.
-calledCounter := 0
-
-err := exec.Run(context.TODO(), func(_ context.Context) error {
-    calledCounter++
-    if calledCounter % 2 == 0 {
-        return errors.New("you didn't expect this error")
-    }
-    return nil
-})
-```
-
-As you see, it's easy to create any combination of resilient execution flows by combining the different runners of the toolkit.
-
-## Create your own resilient runner
+## Extend using your own runners
 
 You can extend the toolkit by implementing the `goresilience.Runner` interface.
 
@@ -137,8 +216,14 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 [sony/gobreaker]: https://github.com/sony/gobreaker
 [afex/hystrix-go]: https://github.com/afex/hystrix-go
 [rubyist/circuitbreaker]: https://github.com/rubyist/circuitbreaker
-[bulkhead]: bulkhead/
-[circuitbreaker]: circuitbreaker/
-[retry]: retry/
-[timeout]: timeout/
 [circuit-breaker-url]: https://martinfowler.com/bliki/CircuitBreaker.html
+[retry-example]: examples/retry
+[timeout-example]: examples/timeout
+[bulkhead-example]: examples/bulkhead
+[circuitbreaker-example]: examples/circuitbreaker
+[chaos-example]: examples/chaos
+[hystrix-example]: examples/hystrix
+[amazon-retry]: https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
+[bulkhead-pattern]: https://docs.microsoft.com/en-us/azure/architecture/patterns/bulkhead
+[chaos-engineering]: https://en.wikipedia.org/wiki/Chaos_engineering
+[prometheus-url]: http://prometheus.io
