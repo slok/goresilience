@@ -177,7 +177,7 @@ Circuit breaker
 
 You can extend the toolkit by implementing the `goresilience.Runner` interface.
 
-In this example we create a new resilience runner to make chaos engeniering that will fail at a constant rate set on the `Config.FailEveryTimes` setting:
+In this example (full example [here][extend-example]) we create a new resilience runner to make chaos engeniering that will fail at a constant rate set on the `Config.FailEveryTimes` setting:
 
 ```golang
 import (
@@ -194,8 +194,8 @@ type Config struct {
     FailEveryTimes int
 }
 
-// New returns a new runner that will fail evey N times of executions.
-func New(cfg Config, r goresilience.Runner) goresilience.Runner {
+// NewFailer returns a new runner that will fail evey N times of executions.
+func NewFailer(cfg Config, r goresilience.Runner) goresilience.Runner {
     r = runnerutils.Sanitize(r)
 
     calledTimes := 0
@@ -208,7 +208,9 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
             calledTimes = 0
             return fmt.Errorf("failed due to %d call", calledTimes)
         }
-        return nil
+
+        // Run using the the chain.
+        return r.Run(ctx, f)
     })
 }
 ```
@@ -223,6 +225,7 @@ func New(cfg Config, r goresilience.Runner) goresilience.Runner {
 [circuitbreaker-example]: examples/circuitbreaker
 [chaos-example]: examples/chaos
 [hystrix-example]: examples/hystrix
+[extend-example]: examples/extend
 [amazon-retry]: https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
 [bulkhead-pattern]: https://docs.microsoft.com/en-us/azure/architecture/patterns/bulkhead
 [chaos-engineering]: https://en.wikipedia.org/wiki/Chaos_engineering
