@@ -41,29 +41,13 @@ func TestBulkheadTimeout(t *testing.T) {
 			},
 			runFunc: func() goresilience.Func {
 				return func(ctx context.Context) error {
-					time.Sleep(10 * time.Millisecond)
+					time.Sleep(20 * time.Millisecond)
 					return nil
 				}
 			},
 			timesToCall:   100,
 			expTotalCalls: 10,
 			expTotalErrs:  90,
-		},
-		{
-			name: "A bulkhead with timeout should timeout the funcs waiting to run if they have waited too much (allow 2 batches).",
-			cfg: bulkhead.Config{
-				Workers:     17,
-				MaxWaitTime: 11 * time.Millisecond,
-			},
-			runFunc: func() goresilience.Func {
-				return func(ctx context.Context) error {
-					time.Sleep(10 * time.Millisecond)
-					return nil
-				}
-			},
-			timesToCall:   100,
-			expTotalCalls: 34,
-			expTotalErrs:  66,
 		},
 	}
 

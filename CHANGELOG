@@ -1,10 +1,10 @@
 ## 0.x.x / xxxx-xx-xx
 
 * Measure retry, bulkhead, timeout, failure injector, circuit breaker and command exection.
-* Add metrics recorder through the execution context.
-* Add failure injector.
-* Add circuit breaker.
-* Add bulkhead.
-* Add retry.
-* Add timeout.
-* Add execution API.
+* Added metrics recorder through the execution context.
+* Added failure injector.
+* Added circuit breaker.
+* Added bulkhead.
+* Added retry.
+* Added timeout.
+* Added execution API.
