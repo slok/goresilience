@@ -59,7 +59,7 @@ func TestTimeout(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cmd := timeout.New(test.cfg, nil)
+			cmd := timeout.New(test.cfg)
 			err := cmd.Run(context.TODO(), test.f)
 
 			assert.Equal(test.expErr, err)

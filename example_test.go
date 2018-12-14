@@ -10,7 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
+	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/metrics"
 	"github.com/slok/goresilience/retry"
 	"github.com/slok/goresilience/timeout"
@@ -18,11 +18,11 @@ import (
 
 func myFunc(ctx context.Context) error { return nil }
 
-// Will use only one of the utilities, the retry with the default settings
+// Will use a single runner, the retry with the default settings
 // this will make the `gorunner.Func` to be executed and retried N times if it fails.
 func Example_basic() {
 	// Create our func `runner`. Use nil as it will not be chained with another `Runner`.
-	cmd := retry.New(retry.Config{}, nil)
+	cmd := retry.New(retry.Config{})
 
 	// Execute.
 	var result string
@@ -56,10 +56,12 @@ func Example_basic() {
 // timeout.
 func Example_chain() {
 	// Create our chain, first the retry and then the timeout with 100ms.
-	cmd := retry.New(retry.Config{},
-		timeout.New(timeout.Config{
+	cmd := goresilience.RunnerChain(
+		retry.NewMiddleware(retry.Config{}),
+		timeout.NewMiddleware(timeout.Config{
 			Timeout: 100 * time.Millisecond,
-		}, nil))
+		}),
+	)
 
 	var result string
 	err := cmd.Run(context.TODO(), func(ctx context.Context) error {
@@ -89,7 +91,7 @@ func Example_chain() {
 // Is an example to show that when the result is not needed we don't need to
 // use and inline function.
 func Example_noresult() {
-	cmd := retry.New(retry.Config{}, nil)
+	cmd := retry.New(retry.Config{})
 
 	// Execute.
 	err := cmd.Run(context.TODO(), myFunc)
@@ -106,7 +108,7 @@ func Example_structresult() {
 		result   string
 	}
 
-	cmd := retry.New(retry.Config{}, nil)
+	cmd := retry.New(retry.Config{})
 
 	// Execute.
 	res := myfuncResult{
@@ -139,11 +141,13 @@ func Example_metrics() {
 	metricsRecorder := metrics.NewPrometheusRecorder(promreg)
 
 	// Create our chain with our metircs wrapper.
-	cmd := metrics.NewMeasuredRunner("example-metrics", metricsRecorder,
-		retry.New(retry.Config{},
-			timeout.New(timeout.Config{
-				Timeout: 100 * time.Millisecond,
-			}, nil)))
+	cmd := goresilience.RunnerChain(
+		metrics.NewMiddleware("example-metrics", metricsRecorder),
+		retry.NewMiddleware(retry.Config{}),
+		timeout.NewMiddleware(timeout.Config{
+			Timeout: 100 * time.Millisecond,
+		}),
+	)
 
 	var result string
 	err := cmd.Run(context.TODO(), func(ctx context.Context) error {

@@ -85,7 +85,7 @@ func TestFailureInjector(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cmd := chaos.New(test.cfg(), nil)
+			cmd := chaos.New(test.cfg())
 			errc := make(chan error)
 			go func() {
 				errc <- cmd.Run(context.TODO(), test.f(cmd))

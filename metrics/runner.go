@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/slok/goresilience"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 )
 
 var ctxRecorderKey contextKey = "recorder"
@@ -33,27 +32,30 @@ func setRecorderOnContext(ctx context.Context, r Recorder) context.Context {
 	return context.WithValue(ctx, ctxRecorderKey, r)
 }
 
-// NewMeasuredRunner is a decorator that will measure the execution of the
-func NewMeasuredRunner(id string, rec Recorder, r goresilience.Runner) goresilience.Runner {
+// NewMiddleware returns a middleware that will decorate a runner and measure
+// the runner chain itself by setting the recorder on the context so the following
+// runners can get and measure.
+func NewMiddleware(id string, rec Recorder) goresilience.Middleware {
 	if rec == nil {
 		rec = Dummy
 	}
 	rec = rec.WithID(id)
 
-	r = runnerutils.Sanitize(r)
+	return func(next goresilience.Runner) goresilience.Runner {
+		return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) (err error) {
+			defer func(start time.Time) {
+				rec.ObserveCommandExecution(start, err == nil)
+			}(time.Now())
 
-	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) (err error) {
-		defer func(start time.Time) {
-			rec.ObserveCommandExecution(start, err == nil)
-		}(time.Now())
+			// Set the recorder.
+			// WARNING: This could have a performance impact due to the usage of reflect package
+			// by the context. Measure if this has a big impact.
+			ctx = setRecorderOnContext(ctx, rec)
 
-		// Set the recorder.
-		// TODO: This could have a performance impact due to the usage of reflect package
-		// by the context. Measure if this has a big impact.
-		ctx = setRecorderOnContext(ctx, rec)
+			next = goresilience.SanitizeRunner(next)
+			err = next.Run(ctx, f)
 
-		err = r.Run(ctx, f)
-
-		return err
-	})
+			return err
+		})
+	}
 }

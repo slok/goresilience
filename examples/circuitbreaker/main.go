@@ -26,7 +26,7 @@ func main() {
 		//WaitDurationInOpenState:            5 * time.Second,
 		//MetricsSlidingWindowBucketQuantity: 10,
 		//MetricsBucketDuration:              1 * time.Second,
-	}, nil)
+	})
 
 	for {
 		time.Sleep(75 * time.Millisecond)

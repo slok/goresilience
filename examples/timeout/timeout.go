@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Create our execution chain (nil marks the end of the chain).
-	cmd := retry.New(retry.Config{}, nil)
+	cmd := retry.New(retry.Config{})
 
 	for i := 0; i < 200; i++ {
 		// Execute.

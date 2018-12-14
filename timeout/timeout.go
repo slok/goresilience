@@ -6,7 +6,6 @@ import (
 
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 	"github.com/slok/goresilience/metrics"
 )
 
@@ -36,34 +35,42 @@ type result struct {
 // New will wrap a execution unit that will cut the execution of
 // a runner when some time passes using the context.
 // use 0 timeout for default timeout.
-func New(cfg Config, r goresilience.Runner) goresilience.Runner {
+func New(cfg Config) goresilience.Runner {
+	return NewMiddleware(cfg)(nil)
+}
+
+// NewMiddleware returns a middleware that will cut the execution of
+// a runner when some time passes using the context.
+// use 0 timeout for default timeout.
+func NewMiddleware(cfg Config) goresilience.Middleware {
 	cfg.defaults()
 
-	r = runnerutils.Sanitize(r)
+	return func(next goresilience.Runner) goresilience.Runner {
+		next = goresilience.SanitizeRunner(next)
+		return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
+			metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
-	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
-		metricsRecorder, _ := metrics.RecorderFromContext(ctx)
+			// Set a timeout to the command using the context.
+			// Should we cancel the context if finished...? I guess not, it could continue
+			// the middleware chain.
+			ctx, _ = context.WithTimeout(ctx, cfg.Timeout)
 
-		// Set a timeout to the command using the context.
-		// Should we cancel the context if finished...? I guess not, it could continue
-		// the middleware chain.
-		ctx, _ = context.WithTimeout(ctx, cfg.Timeout)
+			// Run the command
+			errc := make(chan error)
+			go func() {
+				errc <- next.Run(ctx, f)
+			}()
 
-		// Run the command
-		errc := make(chan error)
-		go func() {
-			errc <- r.Run(ctx, f)
-		}()
-
-		// Wait until the deadline has been reached or we have a result.
-		select {
-		// Finished correctly.
-		case err := <-errc:
-			return err
-		// Timeout.
-		case <-ctx.Done():
-			metricsRecorder.IncTimeout()
-			return errors.ErrTimeout
-		}
-	})
+			// Wait until the deadline has been reached or we have a result.
+			select {
+			// Finished correctly.
+			case err := <-errc:
+				return err
+			// Timeout.
+			case <-ctx.Done():
+				metricsRecorder.IncTimeout()
+				return errors.ErrTimeout
+			}
+		})
+	}
 }

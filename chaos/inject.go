@@ -8,7 +8,6 @@ import (
 
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 	"github.com/slok/goresilience/metrics"
 )
 
@@ -67,11 +66,20 @@ type failureInjector struct {
 // New returns a new chaos runner. The chaos runner will inject failure using
 // the injector. The injector controls the faults. See Injector to know what
 // kind of failures are controlable.
-func New(cfg Config, r goresilience.Runner) goresilience.Runner {
+func New(cfg Config) goresilience.Runner {
+	return NewMiddleware(cfg)(nil)
+}
+
+// NewMiddleware returns a middleware that uses the Runner return
+// by chaos.New.
+func NewMiddleware(cfg Config) goresilience.Middleware {
 	cfg.defaults()
-	return &failureInjector{
-		cfg:    cfg,
-		runner: runnerutils.Sanitize(r),
+
+	return func(next goresilience.Runner) goresilience.Runner {
+		return &failureInjector{
+			cfg:    cfg,
+			runner: goresilience.SanitizeRunner(next),
+		}
 	}
 }
 

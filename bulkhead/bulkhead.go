@@ -6,7 +6,6 @@ import (
 
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 	"github.com/slok/goresilience/metrics"
 )
 
@@ -49,21 +48,27 @@ type bulkhead struct {
 // the exeuction block will wait to be picked by the workers and if they
 // have a max wait time, if that time is passed they will be dropped
 // from the execution queue.
-func New(cfg Config, r goresilience.Runner) goresilience.Runner {
-	r = runnerutils.Sanitize(r)
+func New(cfg Config) goresilience.Runner {
+	return NewMiddleware(cfg)(nil)
+}
 
+// NewMiddleware returns a new middleware for the runner that returns
+//  bulkhead.New.
+func NewMiddleware(cfg Config) goresilience.Middleware {
 	cfg.defaults()
 
-	b := &bulkhead{
-		cfg:    cfg,
-		runner: r,
-		jobC:   make(chan func()),
+	return func(next goresilience.Runner) goresilience.Runner {
+		b := &bulkhead{
+			cfg:    cfg,
+			runner: goresilience.SanitizeRunner(next),
+			jobC:   make(chan func()),
+		}
+
+		// Our workers in background.
+		go b.startWorkerPool()
+
+		return b
 	}
-
-	// Our workers in background.
-	go b.startWorkerPool()
-
-	return b
 }
 
 func (b bulkhead) Run(ctx context.Context, f goresilience.Func) error {

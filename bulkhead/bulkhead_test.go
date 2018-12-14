@@ -71,7 +71,7 @@ func TestBulkheadTimeout(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			bk := bulkhead.New(test.cfg, nil)
+			bk := bulkhead.New(test.cfg)
 			results := make(chan error)
 			// We call N times using our bulkhead and wait until all have finished.
 			for i := 0; i < test.timesToCall; i++ {

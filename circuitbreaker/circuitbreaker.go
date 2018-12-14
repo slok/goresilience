@@ -7,7 +7,6 @@ import (
 
 	"github.com/slok/goresilience"
 	"github.com/slok/goresilience/errors"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 	"github.com/slok/goresilience/metrics"
 )
 
@@ -114,16 +113,25 @@ type circuitbreaker struct {
 // to open state.
 //
 // Note: On every state change the recorded metrics will be reset.
-func New(cfg Config, r goresilience.Runner) goresilience.Runner {
+func New(cfg Config) goresilience.Runner {
+	return NewMiddleware(cfg)(nil)
+}
+
+// NewMiddleware returns a middleware with the runner that is return
+// by circuitbreaker.New (see that for more information).
+func NewMiddleware(cfg Config) goresilience.Middleware {
 	cfg.defaults()
 
-	return &circuitbreaker{
-		state:        stateClosed,
-		recorder:     newBucketWindow(cfg.MetricsSlidingWindowBucketQuantity, cfg.MetricsBucketDuration),
-		stateStarted: time.Now(),
-		cfg:          cfg,
-		runner:       runnerutils.Sanitize(r),
+	return func(next goresilience.Runner) goresilience.Runner {
+		return &circuitbreaker{
+			state:        stateClosed,
+			recorder:     newBucketWindow(cfg.MetricsSlidingWindowBucketQuantity, cfg.MetricsBucketDuration),
+			stateStarted: time.Now(),
+			cfg:          cfg,
+			runner:       goresilience.SanitizeRunner(next),
+		}
 	}
+
 }
 
 func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {

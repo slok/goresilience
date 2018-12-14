@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/slok/goresilience"
-	runnerutils "github.com/slok/goresilience/internal/util/runner"
 	"github.com/slok/goresilience/retry"
 )
 
@@ -16,32 +15,45 @@ type Config struct {
 	FailEveryTimes int
 }
 
-// NewFailer returns a new runner that will fail evey N times of executions.
-func NewFailer(cfg Config, r goresilience.Runner) goresilience.Runner {
-	r = runnerutils.Sanitize(r)
+// NewFailer is like NewFailerMiddleware but will not wrap any other runner, is standalone.
+func NewFailer(cfg Config) goresilience.Runner {
+	return NewFailerMiddleware(cfg)(nil)
+}
 
-	calledTimes := 0
-	// Use the RunnerFunc helper so we don't need to create a new type.
-	return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
-		// We should lock the counter writes, not made because this is an example.
-		calledTimes++
+// NewFailerMiddleware returns a new middleware that will wrap runners and will fail
+// evey N times of executions.
+func NewFailerMiddleware(cfg Config) goresilience.Middleware {
+	return func(next goresilience.Runner) goresilience.Runner {
+		calledTimes := 0
+		// Use the RunnerFunc helper so we don't need to create a new type.
+		return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) error {
+			// We should lock the counter writes, not made because this is an example.
+			calledTimes++
 
-		if calledTimes == cfg.FailEveryTimes {
-			calledTimes = 0
-			return fmt.Errorf("failed due to %d call", calledTimes)
-		}
+			if calledTimes == cfg.FailEveryTimes {
+				calledTimes = 0
+				return fmt.Errorf("failed due to %d call", calledTimes)
+			}
 
-		// Run using the the chain.
-		return r.Run(ctx, f)
-	})
+			// Run using the the chain.
+			next = goresilience.SanitizeRunner(next)
+			return next.Run(ctx, f)
+		})
+	}
 }
 
 func main() {
-	// Create our execution chain (nil marks the end of the chain).
-	cmd := retry.New(retry.Config{},
-		NewFailer(Config{
-			FailEveryTimes: 2,
-		}, nil))
+	failerCfg := Config{
+		FailEveryTimes: 2,
+	}
+
+	// Use it standalone.
+	//cmd := NewFailer(failerCfg)
+
+	// Or... create our execution chain.
+	retrier := retry.NewMiddleware(retry.Config{})
+	failer := NewFailerMiddleware(failerCfg)
+	cmd := goresilience.RunnerChain(retrier, failer)
 
 	for i := 0; i < 200; i++ {
 		// Execute.

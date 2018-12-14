@@ -24,7 +24,7 @@ func main() {
 
 	cmd := chaos.New(chaos.Config{
 		Injector: &chaosctrl,
-	}, nil)
+	})
 
 	errs := make(chan error)
 	go func() {

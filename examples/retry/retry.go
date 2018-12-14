@@ -12,7 +12,7 @@ func main() {
 	// Create our execution chain (nil marks the end of the chain).
 	cmd := timeout.New(timeout.Config{
 		Timeout: 100 * time.Millisecond,
-	}, nil)
+	})
 
 	for i := 0; i < 200; i++ {
 		// Execute.

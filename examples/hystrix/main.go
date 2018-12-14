@@ -35,13 +35,16 @@ type HystrixConf struct {
 // in that order.
 func NewHystrix(cfg HystrixConf) goresilience.Runner {
 	// The order of creating a Hystrix runner is:
-	// circuitbreaker -> bulkhead -> retry -> timeout
-	hystrixRunner := circuitbreaker.New(cfg.Circuitbreaker,
-		bulkhead.New(cfg.Bulkhead,
-			retry.New(cfg.Retry,
-				timeout.New(cfg.Timeout, nil))))
+	// measured runners -> circuitbreaker -> bulkhead -> retry -> timeout
+	hystrixRunner := goresilience.RunnerChain(
+		metrics.NewMiddleware(cfg.ID, cfg.MetricsRecorder),
+		circuitbreaker.NewMiddleware(cfg.Circuitbreaker),
+		bulkhead.NewMiddleware(cfg.Bulkhead),
+		retry.NewMiddleware(cfg.Retry),
+		timeout.NewMiddleware(cfg.Timeout),
+	)
 
-	return metrics.NewMeasuredRunner(cfg.ID, cfg.MetricsRecorder, hystrixRunner)
+	return hystrixRunner
 }
 
 type result struct {

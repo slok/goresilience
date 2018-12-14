@@ -69,7 +69,7 @@ func TestRetryResult(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cmd := retry.New(test.cfg, nil)
+			cmd := retry.New(test.cfg)
 			err := cmd.Run(context.TODO(), test.getF())
 
 			assert.Equal(test.expErr, err)
@@ -140,7 +140,7 @@ func TestConstantRetry(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			exec := retry.New(test.cfg, nil)
+			exec := retry.New(test.cfg)
 			pt := &patternTimer{}
 			exec.Run(context.TODO(), pt.Run)
 
@@ -175,7 +175,7 @@ func TestBackoffJitterRetry(t *testing.T) {
 			// Let's do N iterations of the same process.
 			for i := 0; i < test.times; i++ {
 				runner := &patternTimer{}
-				exec := retry.New(test.cfg, nil)
+				exec := retry.New(test.cfg)
 				exec.Run(context.TODO(), runner.Run)
 
 				// Check that the wait pattern results (diferent from 0)

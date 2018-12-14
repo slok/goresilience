@@ -239,7 +239,7 @@ func TestCircuitBreaker(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			cb := circuitbreaker.New(test.cfg, nil)
+			cb := circuitbreaker.New(test.cfg)
 			err := cb.Run(context.TODO(), test.f(cb))
 
 			assert.Equal(test.expErr, err)
@@ -267,7 +267,7 @@ func BenchmarkCircuitBreaker(b *testing.B) {
 	for _, bench := range benchs {
 		b.Run(bench.name, func(b *testing.B) {
 			// Prepare.
-			cb := circuitbreaker.New(bench.cfg, nil)
+			cb := circuitbreaker.New(bench.cfg)
 			f := bench.f(cb)
 			// execute the benhmark.
 			for n := 0; n < b.N; n++ {

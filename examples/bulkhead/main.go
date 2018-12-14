@@ -16,7 +16,7 @@ func main() {
 	cmd := bulkhead.New(bulkhead.Config{
 		Workers:     20,
 		MaxWaitTime: 10 * time.Millisecond,
-	}, nil)
+	})
 
 	// Execute our logic at the same time.
 	for i := 0; i < times; i++ {
@@ -41,5 +41,5 @@ func main() {
 		}()
 	}
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(10 * time.Second)
 }

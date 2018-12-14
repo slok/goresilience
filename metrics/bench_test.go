@@ -33,7 +33,7 @@ func BenchmarkMeasuredRunner(b *testing.B) {
 			wrapper: func(r goresilience.Runner) goresilience.Runner {
 				promreg := prometheus.NewRegistry()
 				rec := metrics.NewPrometheusRecorder(promreg)
-				return metrics.NewMeasuredRunner("bench", rec, r)
+				return metrics.NewMiddleware("bench", rec)(r)
 			},
 		},
 	}
@@ -41,10 +41,11 @@ func BenchmarkMeasuredRunner(b *testing.B) {
 	for _, bench := range benchs {
 		b.Run(bench.name, func(b *testing.B) {
 			// Prepare the runner.
-			runner := circuitbreaker.New(circuitbreaker.Config{},
-				bulkhead.New(bulkhead.Config{},
-					retry.New(retry.Config{},
-						timeout.New(timeout.Config{}, nil))))
+			runner := goresilience.RunnerChain(
+				circuitbreaker.NewMiddleware(circuitbreaker.Config{}),
+				bulkhead.NewMiddleware(bulkhead.Config{}),
+				retry.NewMiddleware(retry.Config{}),
+				timeout.NewMiddleware(timeout.Config{}))
 
 			runner = bench.wrapper(runner)
 
