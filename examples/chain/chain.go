@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// Create our execution chain.
-	cmd := goresilience.RunnerChain(
+	runner := goresilience.RunnerChain(
 		bulkhead.NewMiddleware(bulkhead.Config{}),
 		retry.NewMiddleware(retry.Config{}),
 		timeout.NewMiddleware(timeout.Config{}),
@@ -22,7 +22,7 @@ func main() {
 	// Execute.
 	calledCounter := 0
 	result := ""
-	err := cmd.Run(context.TODO(), func(_ context.Context) error {
+	err := runner.Run(context.TODO(), func(_ context.Context) error {
 		calledCounter++
 		if calledCounter%2 == 0 {
 			return errors.New("you didn't expect this error")

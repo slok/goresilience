@@ -19,7 +19,7 @@ func errorOnOddMinute(ctx context.Context) error {
 }
 
 func main() {
-	cb := circuitbreaker.New(circuitbreaker.Config{
+	runner := circuitbreaker.New(circuitbreaker.Config{
 		//ErrorPercentThresholdToOpen:        50,
 		//MinimumRequestToOpen:               20,
 		//SuccessfulRequiredOnHalfOpen:       1,
@@ -31,7 +31,7 @@ func main() {
 	for {
 		time.Sleep(75 * time.Millisecond)
 
-		err := cb.Run(context.TODO(), errorOnOddMinute)
+		err := runner.Run(context.TODO(), errorOnOddMinute)
 		if err != nil {
 			if err == errors.ErrCircuitOpen {
 				fmt.Println("[!] circuit open")

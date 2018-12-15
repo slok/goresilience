@@ -13,7 +13,7 @@ const (
 )
 
 func main() {
-	cmd := bulkhead.New(bulkhead.Config{
+	runner := bulkhead.New(bulkhead.Config{
 		Workers:     20,
 		MaxWaitTime: 10 * time.Millisecond,
 	})
@@ -29,7 +29,7 @@ func main() {
 
 		// Submit our command.
 		go func() {
-			err := cmd.Run(context.TODO(), func(_ context.Context) error {
+			err := runner.Run(context.TODO(), func(_ context.Context) error {
 				time.Sleep(50 * time.Millisecond)
 				fmt.Printf("[%d] executed\n", i)
 				return nil

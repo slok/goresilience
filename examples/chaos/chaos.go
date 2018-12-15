@@ -22,7 +22,7 @@ func main() {
 	chaosctrl.SetLatency(200 * time.Millisecond)
 	chaosctrl.SetErrorPercent(15)
 
-	cmd := chaos.New(chaos.Config{
+	runner := chaos.New(chaos.Config{
 		Injector: &chaosctrl,
 	})
 
@@ -31,7 +31,7 @@ func main() {
 		for {
 			time.Sleep(10 * time.Millisecond)
 			go func() {
-				errs <- cmd.Run(context.TODO(), func(ctx context.Context) error {
+				errs <- runner.Run(context.TODO(), func(ctx context.Context) error {
 					fmt.Printf("[+] good\n")
 					return nil
 				})

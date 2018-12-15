@@ -48,17 +48,17 @@ func main() {
 	}
 
 	// Use it standalone.
-	//cmd := NewFailer(failerCfg)
+	//runner := NewFailer(failerCfg)
 
 	// Or... create our execution chain.
 	retrier := retry.NewMiddleware(retry.Config{})
 	failer := NewFailerMiddleware(failerCfg)
-	cmd := goresilience.RunnerChain(retrier, failer)
+	runner := goresilience.RunnerChain(retrier, failer)
 
 	for i := 0; i < 200; i++ {
 		// Execute.
 		result := ""
-		err := cmd.Run(context.TODO(), func(_ context.Context) error {
+		err := runner.Run(context.TODO(), func(_ context.Context) error {
 			result = "all ok"
 			return nil
 		})
