@@ -1,19 +1,25 @@
 package errors
 
-import "errors"
+// Error is a goresilience error. Although sitisfies Error interface from Golang
+// this gives us the ability to check if the error was triggered by a Runner or not.
+type Error string
+
+func (e Error) Error() string {
+	return string(e)
+}
 
 var (
 	// ErrTimeout will be used when a execution timesout.
-	ErrTimeout = errors.New("timeout while executing")
+	ErrTimeout = Error("timeout while executing")
 	// ErrContextCanceled will be used when the execution has not been executed due to the
 	// context cancelation.
-	ErrContextCanceled = errors.New("context canceled, logic not executed")
+	ErrContextCanceled = Error("context canceled, logic not executed")
 	// ErrTimeoutWaitingForExecution will be used when a exeuction block exceeded waiting
 	// to be executed, for example if a worker pool has been busy and the execution object
 	// has been waiting to much for being picked by a pool worker.
-	ErrTimeoutWaitingForExecution = errors.New("timeout while waiting for execution")
+	ErrTimeoutWaitingForExecution = Error("timeout while waiting for execution")
 	// ErrCircuitOpen will be used when a a circuit breaker is open.
-	ErrCircuitOpen = errors.New("request rejected due to the circuit breaker being open")
+	ErrCircuitOpen = Error("request rejected due to the circuit breaker being open")
 	// ErrFailureInjected will be used when the chaos runner decides to inject error failure.
-	ErrFailureInjected = errors.New("failure injected on purpose")
+	ErrFailureInjected = Error("failure injected on purpose")
 )
