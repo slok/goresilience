@@ -1,5 +1,6 @@
 ## 0.x.x / xxxx-xx-xx
 
+* Add chain of Runner middlewares.
 * Measure retry, bulkhead, timeout, failure injector, circuit breaker and command exection.
 * Added metrics recorder through the execution context.
 * Added failure injector.
