@@ -89,13 +89,11 @@ type patternTimer struct {
 func (p *patternTimer) Run(ctx context.Context) error {
 	now := time.Now()
 
-	var durationSince time.Duration
 	if p.prevExecution != notime {
-		durationSince = now.Sub(p.prevExecution)
+		durationSince := now.Sub(p.prevExecution)
+		p.prevExecution = now
+		p.waitPattern = append(p.waitPattern, durationSince.Round(time.Millisecond))
 	}
-	p.prevExecution = now
-
-	p.waitPattern = append(p.waitPattern, durationSince.Round(time.Millisecond))
 
 	return errors.New("wanted error")
 }
@@ -114,7 +112,6 @@ func TestConstantRetry(t *testing.T) {
 				Times:          4,
 			},
 			expWaitPattern: []time.Duration{
-				0,
 				10 * time.Millisecond,
 				10 * time.Millisecond,
 				10 * time.Millisecond,
@@ -129,7 +126,6 @@ func TestConstantRetry(t *testing.T) {
 				Times:          2,
 			},
 			expWaitPattern: []time.Duration{
-				0,
 				30 * time.Millisecond,
 				30 * time.Millisecond,
 			},
@@ -144,7 +140,7 @@ func TestConstantRetry(t *testing.T) {
 			pt := &patternTimer{}
 			exec.Run(context.TODO(), pt.Run)
 
-			assert.Equal(test.expWaitPattern, pt.waitPattern)
+			assert.InEpsilonSlice(test.expWaitPattern, pt.waitPattern, 0.08)
 		})
 	}
 }
