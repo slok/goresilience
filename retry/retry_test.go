@@ -160,7 +160,7 @@ func TestBackoffJitterRetry(t *testing.T) {
 			cfg: retry.Config{
 				WaitBase:       50 * time.Millisecond,
 				DisableBackoff: false,
-				Times:          3,
+				Times:          2,
 			},
 			times: 3,
 		},
