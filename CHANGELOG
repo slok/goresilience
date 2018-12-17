@@ -1,4 +1,4 @@
-## 0.x.x / xxxx-xx-xx
+## 0.1.0 / 2018-12-17
 
 * Added custom error type to know where the error comes from (library or outside).
 * Added chain of Runner middlewares.
