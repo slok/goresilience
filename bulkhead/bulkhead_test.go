@@ -78,8 +78,8 @@ func TestBulkheadTimeout(t *testing.T) {
 				}
 			}
 
-			// Check total calls and errors.
-			assert.Equal(test.expTotalErrs, gotErrors)
+			// Check total calls.
+			assert.InEpsilon(test.expTotalCalls, gotCalls, 0.1)
 		})
 	}
 }
