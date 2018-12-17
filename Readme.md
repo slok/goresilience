@@ -1,4 +1,4 @@
-# Goresilience
+# Goresilience [![Build Status][travis-image]][travis-url] [![Go Report Card][goreport-image]][goreport-url] [![GoDoc][godoc-image]][godoc-url]
 
 Goresilience is a Go toolkit to increase the resilence of applications. Inspired by hystrix and similar libraries at it's core but at the same time very different:
 
@@ -242,6 +242,12 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 }
 ```
 
+[travis-image]: https://travis-ci.org/slok/goresilience.svg?branch=master
+[travis-url]: https://travis-ci.org/slok/goresilience
+[goreport-image]: https://goreportcard.com/badge/github.com/slok/goresilience
+[goreport-url]: https://goreportcard.com/report/github.com/slok/goresilience
+[godoc-image]: https://godoc.org/github.com/slok/goresilience?status.svg
+[godoc-url]: https://godoc.org/github.com/slok/goresilience
 [sony/gobreaker]: https://github.com/sony/gobreaker
 [afex/hystrix-go]: https://github.com/afex/hystrix-go
 [rubyist/circuitbreaker]: https://github.com/rubyist/circuitbreaker
