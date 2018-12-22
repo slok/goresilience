@@ -2,23 +2,24 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"time"
 
-	"github.com/slok/goresilience/retry"
+	"github.com/slok/goresilience/timeout"
 )
 
 func main() {
-	// Create our execution chain (nil marks the end of the chain).
-	runner := retry.New(retry.Config{})
+	// Create our runner.
+	runner := timeout.New(timeout.Config{
+		Timeout: 100 * time.Millisecond,
+	})
 
 	for i := 0; i < 200; i++ {
 		// Execute.
 		result := ""
 		err := runner.Run(context.TODO(), func(_ context.Context) error {
 			if time.Now().Nanosecond()%2 == 0 {
-				return errors.New("you didn't expect this error")
+				time.Sleep(5 * time.Second)
 			}
 			result = "all ok"
 			return nil
