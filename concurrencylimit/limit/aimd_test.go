@@ -83,21 +83,21 @@ func TestAIMD(t *testing.T) {
 			expLimit: 30,
 		},
 		{
-			name: "With an timeout it should decrease with ration (decrease).",
+			name: "With a timeout it should decrease with ratio (decrease).",
 			cfg: limit.AIMDConfig{
 				MinimumLimit:       1,
 				SlowStartThreshold: 25,
 				BackoffRatio:       0.6,
-				RTTTimeout:         15 * time.Millisecond,
+				RTTTimeout:         500 * time.Millisecond,
 			},
 			measuref: func(alg limit.Limiter) {
 				// Start with a high input. (This will set us on a limit of 50)
 				for i := 0; i < 1000; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 3000, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-100*time.Millisecond), 3000, limit.ResultSuccess)
 				}
 
 				// Fail and make decrease.
-				alg.MeasureSample(now.Add(-20*time.Millisecond), 3000, limit.ResultSuccess)
+				alg.MeasureSample(now.Add(-1*time.Second), 3000, limit.ResultSuccess)
 			},
 			expLimit: 30,
 		},
