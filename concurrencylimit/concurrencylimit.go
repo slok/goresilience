@@ -9,6 +9,7 @@ import (
 	"github.com/slok/goresilience/concurrencylimit/execute"
 	"github.com/slok/goresilience/concurrencylimit/limit"
 	"github.com/slok/goresilience/errors"
+	"github.com/slok/goresilience/metrics"
 )
 
 // ExecutionResultPolicy is the function that will have the responsibility of
@@ -93,16 +94,25 @@ type concurrencylimit struct {
 func (c *concurrencylimit) Run(ctx context.Context, f goresilience.Func) error {
 	start := time.Now()
 
+	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
+
 	// Submit the job
-	c.inflights.Inc()
+	currentInflights := c.inflights.Inc()
+	metricsRecorder.SetConcurrencyLimitInflightExecutions(currentInflights)
+
 	err := c.cfg.Executor.Execute(func() error {
 		return c.runner.Run(ctx, f)
 	})
-	currentInflights := c.inflights.Dec()
+
+	currentInflights = c.inflights.Dec()
+	metricsRecorder.SetConcurrencyLimitInflightExecutions(currentInflights)
 
 	// Measure to feed the algorithm.
 	result := c.cfg.ExecutionResultPolicy(ctx, err)
+	metricsRecorder.IncConcurrencyLimitResult(string(result))
+
 	limit := c.cfg.Limiter.MeasureSample(start, currentInflights, result)
+	metricsRecorder.SetConcurrencyLimitLimiterLimit(limit)
 
 	// Update the congestion window based on the new algorithm results.
 	c.cfg.Executor.SetWorkerQuantity(limit)

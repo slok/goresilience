@@ -10,24 +10,28 @@ import (
 var (
 	promNamespace = "goresilience"
 
-	promCommandSubsystem  = "command"
-	promRetrySubsystem    = "retry"
-	promTimeoutSubsystem  = "timeout"
-	promBulkheadSubsystem = "bulkhead"
-	promCBSubsystem       = "circuitbreaker"
-	promChaosSubsystem    = "chaos"
+	promCommandSubsystem          = "command"
+	promRetrySubsystem            = "retry"
+	promTimeoutSubsystem          = "timeout"
+	promBulkheadSubsystem         = "bulkhead"
+	promCBSubsystem               = "circuitbreaker"
+	promChaosSubsystem            = "chaos"
+	promConcurrencyLimitSubsystem = "concurrencylimit"
 )
 
 type prometheusRec struct {
 	// Metrics.
-	cmdExecutionDuration   *prometheus.HistogramVec
-	retryRetries           *prometheus.CounterVec
-	timeoutTimeouts        *prometheus.CounterVec
-	bulkQueued             *prometheus.CounterVec
-	bulkProcessed          *prometheus.CounterVec
-	bulkTimeouts           *prometheus.CounterVec
-	cbStateChanges         *prometheus.CounterVec
-	chaosFailureInjections *prometheus.CounterVec
+	cmdExecutionDuration      *prometheus.HistogramVec
+	retryRetries              *prometheus.CounterVec
+	timeoutTimeouts           *prometheus.CounterVec
+	bulkQueued                *prometheus.CounterVec
+	bulkProcessed             *prometheus.CounterVec
+	bulkTimeouts              *prometheus.CounterVec
+	cbStateChanges            *prometheus.CounterVec
+	chaosFailureInjections    *prometheus.CounterVec
+	concurrencyLimitInflights *prometheus.GaugeVec
+	concurrencyLimitResult    *prometheus.CounterVec
+	concurrencyLimitLimit     *prometheus.GaugeVec
 
 	id  string
 	reg prometheus.Registerer
@@ -46,14 +50,17 @@ func NewPrometheusRecorder(reg prometheus.Registerer) Recorder {
 
 func (p prometheusRec) WithID(id string) Recorder {
 	return &prometheusRec{
-		cmdExecutionDuration:   p.cmdExecutionDuration,
-		retryRetries:           p.retryRetries,
-		timeoutTimeouts:        p.timeoutTimeouts,
-		bulkQueued:             p.bulkQueued,
-		bulkProcessed:          p.bulkProcessed,
-		bulkTimeouts:           p.bulkTimeouts,
-		cbStateChanges:         p.cbStateChanges,
-		chaosFailureInjections: p.chaosFailureInjections,
+		cmdExecutionDuration:      p.cmdExecutionDuration,
+		retryRetries:              p.retryRetries,
+		timeoutTimeouts:           p.timeoutTimeouts,
+		bulkQueued:                p.bulkQueued,
+		bulkProcessed:             p.bulkProcessed,
+		bulkTimeouts:              p.bulkTimeouts,
+		cbStateChanges:            p.cbStateChanges,
+		chaosFailureInjections:    p.chaosFailureInjections,
+		concurrencyLimitInflights: p.concurrencyLimitInflights,
+		concurrencyLimitResult:    p.concurrencyLimitResult,
+		concurrencyLimitLimit:     p.concurrencyLimitLimit,
 
 		id:  id,
 		reg: p.reg,
@@ -117,6 +124,27 @@ func (p *prometheusRec) registerMetrics() {
 		Help:      "Total number of failure injectionsmade by the chaos runner.",
 	}, []string{"id", "kind"})
 
+	p.concurrencyLimitInflights = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promConcurrencyLimitSubsystem,
+		Name:      "inflight_executions",
+		Help:      "The number of inflight executions, these are executing and queued.",
+	}, []string{"id"})
+
+	p.concurrencyLimitResult = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promConcurrencyLimitSubsystem,
+		Name:      "result_total",
+		Help:      "Total results of the executions measured by the limiter algorithm.",
+	}, []string{"id", "result"})
+
+	p.concurrencyLimitLimit = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promConcurrencyLimitSubsystem,
+		Name:      "limiter_limit",
+		Help:      "The concurrency limit measured and calculated by the limiter algorithm.",
+	}, []string{"id"})
+
 	p.reg.MustRegister(p.cmdExecutionDuration,
 		p.retryRetries,
 		p.timeoutTimeouts,
@@ -125,6 +153,9 @@ func (p *prometheusRec) registerMetrics() {
 		p.bulkTimeouts,
 		p.cbStateChanges,
 		p.chaosFailureInjections,
+		p.concurrencyLimitInflights,
+		p.concurrencyLimitResult,
+		p.concurrencyLimitLimit,
 	)
 }
 
@@ -159,4 +190,14 @@ func (p prometheusRec) IncCircuitbreakerState(state string) {
 
 func (p prometheusRec) IncChaosInjectedFailure(kind string) {
 	p.chaosFailureInjections.WithLabelValues(p.id, kind).Inc()
+}
+
+func (p prometheusRec) SetConcurrencyLimitInflightExecutions(q int) {
+	p.concurrencyLimitInflights.WithLabelValues(p.id).Set(float64(q))
+}
+func (p prometheusRec) IncConcurrencyLimitResult(result string) {
+	p.concurrencyLimitResult.WithLabelValues(p.id, result).Inc()
+}
+func (p prometheusRec) SetConcurrencyLimitLimiterLimit(limit int) {
+	p.concurrencyLimitLimit.WithLabelValues(p.id).Set(float64(limit))
 }
