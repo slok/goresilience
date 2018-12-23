@@ -14,26 +14,26 @@ var fSleep10ms = func() error {
 	return nil
 }
 
-func TestExecuteBlocker(t *testing.T) {
+func TestExecuteSimple(t *testing.T) {
 	tests := []struct {
 		name          string
-		cfg           execute.BlockerConfig
+		cfg           execute.SimpleConfig
 		f             func() error
 		numberCalls   int
 		numberWorkers int
 		expOK         int
 	}{
 		{
-			name:          "A blocking executor with a not aggresive timeout and sufficent workers should execute all.",
-			cfg:           execute.BlockerConfig{},
+			name:          "A simple executor with a not aggresive timeout and sufficent workers should execute all.",
+			cfg:           execute.SimpleConfig{},
 			f:             fOK,
 			numberCalls:   50,
 			numberWorkers: 100,
 			expOK:         50,
 		},
 		{
-			name: "A blocking executor with a an aggresive timeout and not sufficent workers should fail fast.",
-			cfg: execute.BlockerConfig{
+			name: "A simple executor with a an aggresive timeout and not sufficent workers should fail fast.",
+			cfg: execute.SimpleConfig{
 				MaxWaitTime: 2 * time.Millisecond,
 			},
 			f:             fSleep10ms,
@@ -47,7 +47,7 @@ func TestExecuteBlocker(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			exec := execute.NewBlocker(test.cfg)
+			exec := execute.NewSimple(test.cfg)
 
 			// Set the number of workers.
 			exec.SetWorkerQuantity(test.numberWorkers)
