@@ -55,7 +55,7 @@ func (c *Config) defaults() {
 	}
 
 	if c.Executor == nil {
-		c.Executor = execute.NewBlocker(execute.BlockerConfig{})
+		c.Executor = execute.NewSimple(execute.SimpleConfig{})
 	}
 
 	if c.ExecutionResultPolicy == nil {

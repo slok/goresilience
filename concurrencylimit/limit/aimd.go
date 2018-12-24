@@ -18,6 +18,8 @@ type AIMDConfig struct {
 	// BackoffRatio is the ratio used to decrease the limit when a failure occurs.
 	// this will be the way is used: new limit = current limit * backoffRatio.
 	BackoffRatio float64
+	// LimitIncrementInflightFactor will increment the limit only if inflight * LimitIncrementInflightFactor > limit
+	LimitIncrementInflightFactor int
 }
 
 func (c *AIMDConfig) defaults() {
@@ -32,6 +34,10 @@ func (c *AIMDConfig) defaults() {
 
 	if c.MinimumLimit == 0 {
 		c.MinimumLimit = 10
+	}
+
+	if c.LimitIncrementInflightFactor == 0 {
+		c.LimitIncrementInflightFactor = 1
 	}
 }
 
@@ -69,7 +75,7 @@ func (a *aimd) MeasureSample(startTime time.Time, infights int, result Result) i
 		// This is a real success.
 		// Only increase if we need it. If not we would be increasing forever.
 		// If we have double of inflight request waiting then increase.
-		if infights > currentLimit*2 {
+		if infights > currentLimit*a.cfg.LimitIncrementInflightFactor {
 			return a.increaseLimit()
 		}
 
