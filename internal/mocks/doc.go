@@ -4,5 +4,9 @@ testing and integration tests whenever is possible.
 */
 package mocks
 
-// Mutating mocks.
+// Runner mocks.
 //go:generate mockery -output ./ -dir ../../ -name Runner
+
+// concurrencylimit mocks.
+//go:generate mockery -output ./concurrencylimit/execute -dir ../../concurrencylimit/execute -name Executor
+//go:generate mockery -output ./concurrencylimit/limit -dir ../../concurrencylimit/limit -name Limiter

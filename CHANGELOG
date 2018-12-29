@@ -1,3 +1,8 @@
+## 0.x.x / 2018-x-xx
+
+* Add AIMD limiter to concurrencylimit.
+* Add concurrencylimit Runner for adaptive runners.
+
 ## 0.1.0 / 2018-12-17
 
 * Added custom error type to know where the error comes from (library or outside).

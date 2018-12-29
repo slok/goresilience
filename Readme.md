@@ -113,19 +113,17 @@ func main() {
 
 As you see, you could create any combination of resilient execution flows by combining the different runners of the toolkit.
 
-## Resilience `Runner`s
-
-### Static
+## Static Runners
 
 Static runners are the ones that based on a static configuration and don't change based on the environment (unlike the adaptive ones).
 
-#### Timeout
+### Timeout
 
 This runner is based on timeout pattern, it will execute the `goresilience.Func` but if the execution duration is greater than a T duration timeout it will return a timeout error.
 
 Check [example][timeout-example].
 
-#### Retry
+### Retry
 
 This runner is based on retry pattern, it will retry the execution of `goresilience.Func` in case it failed N times.
 
@@ -133,7 +131,7 @@ It will use a exponential backoff with some jitter (for more information check [
 
 Check [example][retry-example].
 
-#### Bulkhead
+### Bulkhead
 
 This runner is based on [bulkhead pattern][bulkhead-pattern], it will control the concurrecy of `goresilience.Func` executions using the same runner.
 
@@ -141,21 +139,35 @@ It also can timeout if a `goresilience.Func` has been waiting too much to be exe
 
 Check [example][bulkhead-example].
 
-#### Circuit breaker
+### Circuit breaker
 
 This runner is based on [circuitbreaker pattern][circuit-breaker-url], it will be storing the results of the executed `goresilience.Func` in N buckets of T time to change the state of the circuit based on those measured metrics.
 
 Check [example][circuitbreaker-example].
 
-#### Chaos
+### Chaos
 
 This runner is based on [failure injection][chaos-engineering] of errors and latency. It will inject those failures on the required executions (based on percent or all).
 
 Check [example][chaos-example].
 
-### Adaptive
+## Adaptive Runners
 
-TODO
+### Concurrency limit
+
+Concurrency limit is based on Netflix [concurrency-limit] library. It tries to implement the same features but for goresilience library (nd compatible with other runners).
+
+It limits the concurrency based on less configuration and adaptive based on the environment is running on that moment, hardware, load...
+
+This Runner will limit the concurrency (like bulkhead) but it will use different TCP congestion algorithms to adapt the concurrency limit based on errors and latency.
+
+The Runner is based on 3 parts.
+
+- Limiter: This is the one that will measure and calculate the limit of concurrency based on different algorithms that can be choose, for example [AIMD].
+- Executor: This is the one executing the `goresilience.Func` itself, it has different queuing implementations that will prioritize and drop executions based on the implementations.
+- Runner: This is the runner itself that will be used by the user and is the glue of the `Limiter` and the `Executor`. This will had a policy that will treat the execution result as an error, success or ignore for the Limiter algorithm.
+
+Check [example][concurrencylimit-example].
 
 ### Other
 
@@ -259,7 +271,10 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 [chaos-example]: examples/chaos
 [hystrix-example]: examples/hystrix
 [extend-example]: examples/extend
+[concurrencylimit-example]: examples/concurrencylimit
 [amazon-retry]: https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
 [bulkhead-pattern]: https://docs.microsoft.com/en-us/azure/architecture/patterns/bulkhead
 [chaos-engineering]: https://en.wikipedia.org/wiki/Chaos_engineering
 [prometheus-url]: http://prometheus.io
+[aimd]: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
+[concurrency-limit]: https://github.com/Netflix/concurrency-limits

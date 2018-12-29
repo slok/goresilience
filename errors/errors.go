@@ -22,4 +22,7 @@ var (
 	ErrCircuitOpen = Error("request rejected due to the circuit breaker being open")
 	// ErrFailureInjected will be used when the chaos runner decides to inject error failure.
 	ErrFailureInjected = Error("failure injected on purpose")
+	// ErrRejectedExecution will be used by the executors when the execution of a func has been rejected
+	// before being executed.
+	ErrRejectedExecution = Error("execution has been rejected")
 )

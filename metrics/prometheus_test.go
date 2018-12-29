@@ -153,6 +153,28 @@ func TestPrometheus(t *testing.T) {
 				`goresilience_chaos_failure_injections_total{id="test2",kind="error"} 1`,
 			},
 		},
+		{
+			name: "Recording concurrency limit metrics should expose the metrics.",
+			recordMetrics: func(m metrics.Recorder) {
+				m1 := m.WithID("test")
+				m2 := m.WithID("test2")
+				m1.SetConcurrencyLimitInflightExecutions(4)
+				m2.SetConcurrencyLimitInflightExecutions(6)
+				m1.SetConcurrencyLimitLimiterLimit(1987)
+				m2.SetConcurrencyLimitLimiterLimit(16)
+				m1.IncConcurrencyLimitResult("success")
+				m1.IncConcurrencyLimitResult("success")
+				m2.IncConcurrencyLimitResult("ignore")
+			},
+			expMetrics: []string{
+				`goresilience_concurrencylimit_inflight_executions{id="test"} 4`,
+				`goresilience_concurrencylimit_inflight_executions{id="test2"} 6`,
+				`goresilience_concurrencylimit_limiter_limit{id="test"} 1987`,
+				`goresilience_concurrencylimit_limiter_limit{id="test2"} 16`,
+				`goresilience_concurrencylimit_result_total{id="test",result="success"} 2`,
+				`goresilience_concurrencylimit_result_total{id="test2",result="ignore"} 1`,
+			},
+		},
 	}
 
 	for _, test := range tests {
