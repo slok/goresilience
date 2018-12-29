@@ -13,7 +13,7 @@ type AIMDConfig struct {
 	// and when reached to this threshold it will change the mode and increase slowly.
 	// If set to 0 then slow start will be disabled.
 	SlowStartThreshold int
-	// RTTTimeout is the maximum time the algorithm will treat as a failure (in tcp packet loss).
+	// RTTTimeout is the rtt is greater than this value it will be measured as a failure.
 	RTTTimeout time.Duration
 	// BackoffRatio is the ratio used to decrease the limit when a failure occurs.
 	// this will be the way is used: new limit = current limit * backoffRatio.
@@ -29,7 +29,7 @@ func (c *AIMDConfig) defaults() {
 	}
 
 	if c.RTTTimeout == 0 {
-		c.RTTTimeout = 5 * time.Second
+		c.RTTTimeout = 2 * time.Second
 	}
 
 	if c.MinimumLimit == 0 {

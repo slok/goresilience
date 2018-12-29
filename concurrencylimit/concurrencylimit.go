@@ -13,7 +13,7 @@ import (
 )
 
 // ExecutionResultPolicy is the function that will have the responsibility of
-// categorizing the result of the execution for the limit algorithm. For example
+// categorizing the result of the execution for the limiter algorithm. For example
 // depending on the type of the execution a connection error could be treated
 // like an failure in the algorithm or just ignore it.
 type ExecutionResultPolicy func(ctx context.Context, err error) limit.Result
@@ -51,7 +51,7 @@ type Config struct {
 
 func (c *Config) defaults() {
 	if c.Limiter == nil {
-		c.Limiter = limit.NewStatic(10)
+		c.Limiter = limit.NewAIMD(limit.AIMDConfig{})
 	}
 
 	if c.Executor == nil {
