@@ -34,7 +34,7 @@ func TestExecuteFIFO(t *testing.T) {
 		{
 			name: "A simple executor with a an aggresive timeout and not sufficent workers should fail fast.",
 			cfg: execute.FIFOConfig{
-				MaxWaitTime: 2 * time.Millisecond,
+				MaxWaitTime: 10 * time.Nanosecond,
 			},
 			f:             fSleep10ms,
 			numberCalls:   50,
