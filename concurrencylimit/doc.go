@@ -4,7 +4,7 @@ package concurrencylimit
 // it tries to create a concurrency controlled execution flow using adaptive algorithms
 // from TCP congestion control algorithms.
 //
-// The implementation of concurrencylimit runner is based in 3 componentes:
+// The implementation of concurrencylimit runner is based in 4 componentes:
 //
 // - The Limiter algorithm: This is the algorithm used to calculate
 // 	 the limit of concunrrency. There are multiple to select based on the type
@@ -26,9 +26,10 @@ package concurrencylimit
 //   to the algorithm to create a new limit dynamically, sets those limits on the
 //	 executor...
 //
-// The concurrencylimit Runner has a configuration field that is the error policy
-// this policy is the one responsible to tell if the received error by the function
-// is a real error for the limit algorithm or not. By default every
-// error is treated as a failure and will count on the algorithm as an failure.
-// Another policy could be only the errors that are not of X type and the field Y
-// from the context has Z attribute to true.
+// - The result policy: The concurrencylimit Runner has a configuration field that is the error policy
+//   this policy is the one responsible to tell if the received error by the function
+//   is a real error for the limit algorithm or not. By default every external error to
+//   concurrencylimit reject error is treated as a failure and will count on the algorithm
+//   as an failure.
+//   Another policy could be only the errors that are not of X type and the field Y
+//   from the context has Z attribute to true.

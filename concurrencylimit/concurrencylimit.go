@@ -55,7 +55,7 @@ func (c *Config) defaults() {
 	}
 
 	if c.Executor == nil {
-		c.Executor = execute.NewSimple(execute.SimpleConfig{})
+		c.Executor = execute.NewFIFO(execute.FIFOConfig{})
 	}
 
 	if c.ExecutionResultPolicy == nil {
