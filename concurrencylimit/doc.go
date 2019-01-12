@@ -26,7 +26,7 @@ package concurrencylimit
 //   to the algorithm to create a new limit dynamically, sets those limits on the
 //	 executor...
 //
-// - The Error policy: The concurrencylimit Runner has a configuration field that is the error policy
+// - The result policy: The concurrencylimit Runner has a configuration field that is the error policy
 //   this policy is the one responsible to tell if the received error by the function
 //   is a real error for the limit algorithm or not. By default every external error to
 //   concurrencylimit reject error is treated as a failure and will count on the algorithm

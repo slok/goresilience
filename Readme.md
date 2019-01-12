@@ -166,7 +166,7 @@ The Runner is based on 4 components.
 - Limiter: This is the one that will measure and calculate the limit of concurrency based on different algorithms that can be choose, for example [AIMD].
 - Executor: This is the one executing the `goresilience.Func` itself, it has different queuing implementations that will prioritize and drop executions based on the implementations.
 - Runner: This is the runner itself that will be used by the user and is the glue of the `Limiter` and the `Executor`. This will had a policy that will treat the execution result as an error, success or ignore for the Limiter algorithm.
-- Error policy: This is a function that can be configured on the concurrencylimit Runner. This function receives the result of the executed function and returns a result for the limit algorithm. This policy is responsible to tell the limit algorithm if the received error should be count as a success, failure or ignore on the calculation of the concurrency limit. For example: only count the errors that have been 502 other ones ignore.
+- Result policy: This is a function that can be configured on the concurrencylimit Runner. This function receives the result of the executed function and returns a result for the limit algorithm. This policy is responsible to tell the limit algorithm if the received error should be count as a success, failure or ignore on the calculation of the concurrency limit. For example: only count the errors that have been 502 other ones ignore.
 
 Check [example][concurrencylimit-example].
 
@@ -179,7 +179,7 @@ Check [example][concurrencylimit-example].
 - `Static`: This limiter will set a constant limit that will not change.
 - `AIMD`: This limiter is based on [AIMD] TCP congestion algorithm. It increases the limit at a constant rate and when congestion occurs (by timeout or result failure) it will decrese by a configured factor
 
-#### Error policy
+#### Result policy
 
 - `everyExternalErrorAsFailurePolicy`: is the default policy. for errors that are `errors.ErrRejectedExecution` they will act as ignored by the limit algorithms, the rest of the errors will be treat as failures.
 
