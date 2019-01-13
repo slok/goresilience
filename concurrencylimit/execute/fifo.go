@@ -29,14 +29,14 @@ func NewFIFO(cfg FIFOConfig) Executor {
 	cfg.defaults()
 
 	return &fifo{
-		pool: newPool(),
-		cfg:  cfg,
+		workerPool: newWorkerPool(),
+		cfg:        cfg,
 	}
 }
 
 type fifo struct {
 	cfg FIFOConfig
-	pool
+	workerPool
 }
 
 // Execute satisfies Executor interface.
