@@ -8,12 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fOK = func() error { return nil }
-var fSleep10ms = func() error {
-	time.Sleep(10 * time.Millisecond)
-	return nil
-}
-
 func TestExecuteFIFO(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -26,7 +20,7 @@ func TestExecuteFIFO(t *testing.T) {
 		{
 			name:          "A FIFO executor with a not aggresive timeout and sufficent workers should execute all.",
 			cfg:           execute.FIFOConfig{},
-			f:             fOK,
+			f:             func() error { return nil },
 			numberCalls:   50,
 			numberWorkers: 100,
 			expOK:         50,
@@ -36,7 +30,10 @@ func TestExecuteFIFO(t *testing.T) {
 			cfg: execute.FIFOConfig{
 				MaxWaitTime: 10 * time.Nanosecond,
 			},
-			f:             fSleep10ms,
+			f: func() error {
+				time.Sleep(10 * time.Millisecond)
+				return nil
+			},
 			numberCalls:   50,
 			numberWorkers: 25,
 			expOK:         25,

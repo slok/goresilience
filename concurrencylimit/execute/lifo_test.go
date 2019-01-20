@@ -20,7 +20,7 @@ func TestExecuteLIFO(t *testing.T) {
 		{
 			name:          "A LIFO executor with a not aggresive timeout and sufficent workers should execute all.",
 			cfg:           execute.LIFOConfig{},
-			f:             fOK,
+			f:             func() error { return nil },
 			numberCalls:   50,
 			numberWorkers: 100,
 			expOK:         50,
@@ -28,9 +28,12 @@ func TestExecuteLIFO(t *testing.T) {
 		{
 			name: "A simple executor with a an aggresive timeout and not sufficent workers should fail fast.",
 			cfg: execute.LIFOConfig{
-				MaxWaitTime: 5000 * time.Nanosecond,
+				MaxWaitTime: 5 * time.Millisecond,
 			},
-			f:             fSleep10ms,
+			f: func() error {
+				time.Sleep(30 * time.Millisecond)
+				return nil
+			},
 			numberCalls:   50,
 			numberWorkers: 25,
 			expOK:         25,
