@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExecuteFIFO(t *testing.T) {
+func TestExecuteLIFO(t *testing.T) {
 	tests := []struct {
 		name          string
-		cfg           execute.FIFOConfig
+		cfg           execute.LIFOConfig
 		f             func() error
 		numberCalls   int
 		numberWorkers int
 		expOK         int
 	}{
 		{
-			name:          "A FIFO executor with a not aggresive timeout and sufficent workers should execute all.",
-			cfg:           execute.FIFOConfig{},
+			name:          "A LIFO executor with a not aggresive timeout and sufficent workers should execute all.",
+			cfg:           execute.LIFOConfig{},
 			f:             func() error { return nil },
 			numberCalls:   50,
 			numberWorkers: 100,
@@ -27,11 +27,11 @@ func TestExecuteFIFO(t *testing.T) {
 		},
 		{
 			name: "A simple executor with a an aggresive timeout and not sufficent workers should fail fast.",
-			cfg: execute.FIFOConfig{
-				MaxWaitTime: 10 * time.Nanosecond,
+			cfg: execute.LIFOConfig{
+				MaxWaitTime: 5 * time.Millisecond,
 			},
 			f: func() error {
-				time.Sleep(10 * time.Millisecond)
+				time.Sleep(30 * time.Millisecond)
 				return nil
 			},
 			numberCalls:   50,
@@ -44,7 +44,7 @@ func TestExecuteFIFO(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			exec := execute.NewFIFO(test.cfg)
+			exec := execute.NewLIFO(test.cfg)
 
 			// Set the number of workers.
 			exec.SetWorkerQuantity(test.numberWorkers)
@@ -71,16 +71,18 @@ func TestExecuteFIFO(t *testing.T) {
 	}
 }
 
-func TestExecuteFIFOOrder(t *testing.T) {
+func TestExecuteLIFOOrder(t *testing.T) {
 	tests := []struct {
 		name        string
 		numberCalls int
 		expResult   []int
 	}{
 		{
-			name:        "In a FIFO queue the queued objects should execute in a first-in-first-out priority.",
+			name:        "In a LIFO queue the queued objects should execute in a first-in-first-out priority.",
 			numberCalls: 12,
-			expResult:   []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+			// Due how the wait signals from the queue is implemented the first two
+			// elements in the queue will be get before the others.
+			expResult: []int{0, 1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2},
 		},
 	}
 
@@ -88,29 +90,26 @@ func TestExecuteFIFOOrder(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			exec := execute.NewFIFO(execute.FIFOConfig{
-				MaxWaitTime: 500 * time.Millisecond, // Long enough so doesn't timeout anything.
+			exec := execute.NewLIFO(execute.LIFOConfig{
+				MaxWaitTime: 500 * time.Second, // Long enough so doesn't timeout anything.
 			})
-
-			// Set the number of workers.
-			exec.SetWorkerQuantity(1)
 
 			// Execute multiple concurrent cals.
 			results := make(chan int)
 			for i := 0; i < test.numberCalls; i++ {
-				// sleep on each iteration to guarantee that the goroutines are executed
-				// in order, but sleep less that the time the goroutine lasts executing to
-				// queue executions.
 				time.Sleep(1 * time.Millisecond)
 				i := i
 				go func() {
 					exec.Execute(func() error {
-						time.Sleep(2 * time.Millisecond)
 						results <- i
 						return nil
 					})
 				}()
 			}
+			time.Sleep(10 * time.Millisecond)
+
+			// Set the number of workers. This will start draining the queue.
+			exec.SetWorkerQuantity(1)
 
 			// Grab the results.
 			gotResult := []int{}
