@@ -94,7 +94,7 @@ func TestExecuteLIFOOrder(t *testing.T) {
 				MaxWaitTime: 500 * time.Second, // Long enough so doesn't timeout anything.
 			})
 
-			// Execute multiple concurrent cals.
+			// Execute multiple concurrent calls.
 			results := make(chan int)
 			for i := 0; i < test.numberCalls; i++ {
 				time.Sleep(1 * time.Millisecond)

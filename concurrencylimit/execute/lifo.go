@@ -1,7 +1,6 @@
 package execute
 
 import (
-	"sync"
 	"time"
 
 	"github.com/slok/goresilience/errors"
@@ -31,7 +30,6 @@ func (c *LIFOConfig) defaults() {
 
 type lifo struct {
 	cfg   LIFOConfig
-	mu    sync.Mutex
 	queue *queue
 	workerPool
 }
@@ -65,7 +63,7 @@ func (l *lifo) Execute(f func() error) error {
 	}
 
 	// Send to a queue.
-	l.queue.In <- job
+	l.queue.InChannel() <- job
 
 	return <-res
 }
@@ -77,29 +75,9 @@ func (l *lifo) fromQueueToWorkerPool() {
 		select {
 		case <-l.cfg.StopChannel:
 			return
-		case job := <-l.queue.Out:
+		case job := <-l.queue.OutChannel():
 			// Send to execution worker.
 			l.workerPool.jobQueue <- job
 		}
-	}
-}
-
-// enqueueAtEndPolicy enqueues at the end of the queue.
-var enqueueAtEndPolicy = func(job func(), jobqueue []func()) []func() {
-	return append(jobqueue, job)
-}
-
-// lifoDequeuePolicy implements the policy for a LIFO priority, it will
-// dequeue de latest job queue.
-var lifoDequeuePolicy = func(queue []func()) (job func(), afterQueue []func()) {
-	switch len(queue) {
-	case 0:
-		return nil, []func(){}
-	case 1:
-		return queue[0], []func(){}
-	default:
-		// LIFO order, get the last one on the queued.
-		length := len(queue)
-		return queue[length-1], queue[:length-1]
 	}
 }

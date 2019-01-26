@@ -23,7 +23,7 @@ func (c *FIFOConfig) defaults() {
 // and queued with FIFO priority until one worker is free or the timeout is reached, in this last
 // case the execution will be treat as rejected.
 //
-// The FIFO kind queue is based on internal implmentation of Go channels that makes blocked sends to a
+// The FIFO kind queue is based on internal implementation of Go channels that makes blocked sends to a
 // channel execute in a first-in-first-out priority.
 func NewFIFO(cfg FIFOConfig) Executor {
 	cfg.defaults()

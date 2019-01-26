@@ -95,7 +95,7 @@ func TestExecuteFIFOOrder(t *testing.T) {
 			// Set the number of workers.
 			exec.SetWorkerQuantity(1)
 
-			// Execute multiple concurrent cals.
+			// Execute multiple concurrent calls.
 			results := make(chan int)
 			for i := 0; i < test.numberCalls; i++ {
 				// sleep on each iteration to guarantee that the goroutines are executed
