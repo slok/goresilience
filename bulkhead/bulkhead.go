@@ -40,12 +40,12 @@ type bulkhead struct {
 	jobC   chan func() // jobC is the channel used to send job to the worker pool.
 }
 
-// New returns a new buklhead runner.
+// New returns a new bulkhead runner.
 // Bulkhead will limit the execution of execution blocks based on
 // a configuration. The bulkhead implementation will be made
 // using a worker of pools, the workers will pick these execution blocks
 // when they are free, they will execute the logic and pick another block
-// the exeuction block will wait to be picked by the workers and if they
+// the execution block will wait to be picked by the workers and if they
 // have a max wait time, if that time is passed they will be dropped
 // from the execution queue.
 func New(cfg Config) goresilience.Runner {

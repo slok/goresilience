@@ -1,7 +1,6 @@
 package execute
 
 import (
-	"sync"
 	"time"
 
 	"github.com/slok/goresilience/errors"
@@ -31,7 +30,6 @@ func (c *LIFOConfig) defaults() {
 
 type lifo struct {
 	cfg   LIFOConfig
-	mu    sync.Mutex
 	queue *queue
 	workerPool
 }
@@ -51,23 +49,36 @@ func NewLIFO(cfg LIFOConfig) Executor {
 }
 
 func (l *lifo) Execute(f func() error) error {
-	start := time.Now()
+	// This channel will receive a signal when the job has been dequeued
+	// to be processed.
+	dequeuedJob := make(chan struct{})
+	canceledJob := make(chan struct{})
 	res := make(chan error)
 	job := func() {
-		// Maybe in the time of execution we have been waiting too much,
-		// in that case don't execute and return error.
-		if time.Since(start) > l.cfg.MaxWaitTime {
-			res <- errors.ErrRejectedExecution
+		// Send the signal the job has been dequeued.
+		close(dequeuedJob)
+
+		select {
+		case <-canceledJob:
 			return
+		default:
 		}
 
 		res <- f()
 	}
 
 	// Send to a queue.
-	l.queue.In <- job
+	go func() {
+		l.queue.InChannel() <- job
+	}()
 
-	return <-res
+	select {
+	case <-time.After(l.cfg.MaxWaitTime):
+		close(canceledJob)
+		return errors.ErrRejectedExecution
+	case <-dequeuedJob:
+		return <-res
+	}
 }
 
 // fromQueueToWorkerPool will get from the queue in a loop the jobs to be
@@ -77,29 +88,9 @@ func (l *lifo) fromQueueToWorkerPool() {
 		select {
 		case <-l.cfg.StopChannel:
 			return
-		case job := <-l.queue.Out:
+		case job := <-l.queue.OutChannel():
 			// Send to execution worker.
 			l.workerPool.jobQueue <- job
 		}
-	}
-}
-
-// enqueueAtEndPolicy enqueues at the end of the queue.
-var enqueueAtEndPolicy = func(job func(), jobqueue []func()) []func() {
-	return append(jobqueue, job)
-}
-
-// lifoDequeuePolicy implements the policy for a LIFO priority, it will
-// dequeue de latest job queue.
-var lifoDequeuePolicy = func(queue []func()) (job func(), afterQueue []func()) {
-	switch len(queue) {
-	case 0:
-		return nil, []func(){}
-	case 1:
-		return queue[0], []func(){}
-	default:
-		// LIFO order, get the last one on the queued.
-		length := len(queue)
-		return queue[length-1], queue[:length-1]
 	}
 }
