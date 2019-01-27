@@ -173,11 +173,13 @@ Check [example][concurrencylimit-example].
 #### Executors
 
 - `FIFO`: This executor is the default one it will execute the queue jobs in a first-in-first-out order and also has a queue wait timeout.
+- `LIFO`: This executor will execute the queue jobs in a last-in-first-out order and also has a queue wait timeout.
+- `AdaptiveLIFOCodel`: Implementation of Facebook's [CoDel+adaptive LIFO][fb-codel] algorithm. This executor is used with `Static` limiter.
 
 #### Limiter
 
 - `Static`: This limiter will set a constant limit that will not change.
-- `AIMD`: This limiter is based on [AIMD] TCP congestion algorithm. It increases the limit at a constant rate and when congestion occurs (by timeout or result failure) it will decrese by a configured factor
+- `AIMD`: This limiter is based on [AIMD] TCP congestion algorithm. It increases the limit at a constant rate and when congestion occurs (by timeout or result failure) it will decrease by a configured factor
 
 #### Result policy
 
@@ -293,3 +295,4 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 [aimd]: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
 [concurrency-limit]: https://github.com/Netflix/concurrency-limits
 [aimd]: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
+[fb-code]: https://queue.acm.org/detail.cfm?id=2839461
