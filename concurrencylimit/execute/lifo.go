@@ -49,23 +49,36 @@ func NewLIFO(cfg LIFOConfig) Executor {
 }
 
 func (l *lifo) Execute(f func() error) error {
-	start := time.Now()
+	// This channel will receive a signal when the job has been dequeued
+	// to be processed.
+	dequeuedJob := make(chan struct{})
+	canceledJob := make(chan struct{})
 	res := make(chan error)
 	job := func() {
-		// Maybe in the time of execution we have been waiting too much,
-		// in that case don't execute and return error.
-		if time.Since(start) > l.cfg.MaxWaitTime {
-			res <- errors.ErrRejectedExecution
+		// Send the signal the job has been dequeued.
+		close(dequeuedJob)
+
+		select {
+		case <-canceledJob:
 			return
+		default:
 		}
 
 		res <- f()
 	}
 
 	// Send to a queue.
-	l.queue.InChannel() <- job
+	go func() {
+		l.queue.InChannel() <- job
+	}()
 
-	return <-res
+	select {
+	case <-time.After(l.cfg.MaxWaitTime):
+		close(canceledJob)
+		return errors.ErrRejectedExecution
+	case <-dequeuedJob:
+		return <-res
+	}
 }
 
 // fromQueueToWorkerPool will get from the queue in a loop the jobs to be

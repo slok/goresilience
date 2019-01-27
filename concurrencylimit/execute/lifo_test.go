@@ -49,7 +49,7 @@ func TestExecuteLIFO(t *testing.T) {
 			// Set the number of workers.
 			exec.SetWorkerQuantity(test.numberWorkers)
 
-			// Execute multiple concurrent cals.
+			// Execute multiple concurrent calls.
 			results := make(chan error)
 			for i := 0; i < test.numberCalls; i++ {
 				go func() {
