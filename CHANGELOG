@@ -1,5 +1,6 @@
 ## 0.x.x / 2018-x-xx
 
+* Add Adaptive LIFO with CoDel executor to concurrencylimit.
 * Add LIFO executor to concurrencylimit.
 * Add AIMD limiter to concurrencylimit.
 * Add concurrencylimit Runner for adaptive runners.

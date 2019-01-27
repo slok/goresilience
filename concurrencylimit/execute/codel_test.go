@@ -2,6 +2,7 @@ package execute_test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,6 +50,8 @@ func TestCodel(t *testing.T) {
 			expResults: []string{"id-0", "id-1", "id-2", "id-3", "id-4", "id-5", "id-6", "id-7", "id-8", "id-9"},
 		},
 		{
+			// WARNING: This test is extremely complex, this is because of the nature of checking
+			// the algorithm execution priorities, cancelations... sorry :/
 			name: "An execution that detects congestion using CoDel should activate target timeout and use LIFO priority for the queue.",
 			cfg: execute.AdaptiveLIFOCodelConfig{
 				CodelTargetDelay: 10 * time.Millisecond,
@@ -69,13 +72,26 @@ func TestCodel(t *testing.T) {
 
 				exec.SetWorkerQuantity(1)
 
+				// Execute the result grabber in background. This function will be
+				// grabbing the results constantly until we receive a stop signal.
+				// We use a mutex so when the test returns the result ensure the background
+				// grabber is not adding more results and we can be sure that we grabbed
+				// everything that we could grab.
 				resultC := make(chan string)
-
-				// Execute the result grab.
+				stopGrabC := make(chan struct{})
 				results := []string{}
+				var resultsmu sync.Mutex
 				go func() {
-					for res := range resultC {
-						results = append(results, res)
+					// Lock results until finished grabbing results.
+					resultsmu.Lock()
+					defer resultsmu.Unlock()
+					for {
+						select {
+						case <-stopGrabC:
+							return
+						case res := <-resultC:
+							results = append(results, res)
+						}
 					}
 				}()
 
@@ -110,9 +126,14 @@ func TestCodel(t *testing.T) {
 					}()
 				}
 
-				// Wait for final results grab.
+				// Wait some time to grab the inflight background executions.
+				// then close the grabber.
 				time.Sleep(200 * time.Millisecond)
+				close(stopGrabC)
 
+				// This lock will wait until the grabber unlocks the results
+				resultsmu.Lock()
+				defer resultsmu.Unlock()
 				return results
 			},
 			expResults: []string{
