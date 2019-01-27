@@ -8,13 +8,13 @@ import (
 
 // AdaptiveLIFOCodelConfig is the configuration for the AdaptiveLIFOCodel executor.
 type AdaptiveLIFOCodelConfig struct {
-	// CodelTarget is the duration the execution funcs can be on the queue before being
+	// CodelTargetDelay is the duration the execution funcs can be on the queue before being
 	// rejected when the controlled delay congestion has been activated (a.k.a bufferbloat detected).
-	CodelTarget time.Duration
+	CodelTargetDelay time.Duration
 	// CodelInterval is the default max time the funcs can be on the queue before being rejected.
 	CodelInterval time.Duration
 	// The queue uses a goroutine in background to execute the queue
-	// jobs, in case it want's to be stopped a channel could be used to
+	// jobs, in case it wants to be stopped a channel could be used to
 	// stop the execution.
 	StopChannel chan struct{}
 }
@@ -24,8 +24,8 @@ func (c *AdaptiveLIFOCodelConfig) defaults() {
 		c.StopChannel = make(chan struct{})
 	}
 
-	if c.CodelTarget == 0 {
-		c.CodelTarget = 5 * time.Millisecond
+	if c.CodelTargetDelay == 0 {
+		c.CodelTargetDelay = 5 * time.Millisecond
 	}
 
 	if c.CodelInterval == 0 {
@@ -39,7 +39,7 @@ type adaptiveLIFOCodel struct {
 	workerPool
 }
 
-// NewAdaptiveLIFOCodel is an executor based on Codel algorithm (Controlled delay) for the execution,
+// NewAdaptiveLIFOCodel is an executor based on CoDel algorithm (Controlled delay) for the execution,
 // more info here https://queue.acm.org/detail.cfm?id=2209336, and adaptive LIFO for the queue
 // priority.
 //
@@ -71,7 +71,7 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 	// and set the congestion timeout to the aggressive CoDel timeout.
 	if a.queueCongested() {
 		a.queue.SetDequeuePolicy(lifoDequeuePolicy)
-		timeout = a.cfg.CodelTarget
+		timeout = a.cfg.CodelTargetDelay
 	} else {
 		// No congestion means fifo and regular timeout.
 		a.queue.SetDequeuePolicy(fifoDequeuePolicy)
@@ -79,24 +79,24 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 	}
 
 	// This channel will receive a signal if the job is cancelled.
-	cancelJob := make(chan struct{})
+	canceledJob := make(chan struct{})
+	// This channel will receive a signal when the job has been dequeued
+	// to be processed.
+	dequeuedJob := make(chan struct{})
 
-	// Create a job and listen if the job has been cancelled before
-	// executing something that will not be used due to an upper layer
-	// already cancelled (this layer).
+	// Create a job and listen if the job has been cancelled already.
 	res := make(chan error)
 	job := func() {
+		// Send the signal the job has been dequeued.
+		close(dequeuedJob)
+
 		select {
-		case <-cancelJob:
+		case <-canceledJob:
 			return
 		default:
 		}
 
-		// Don't wait if the channel has been cancelled due to a timeout.
-		select {
-		case res <- f():
-		default:
-		}
+		res <- f()
 	}
 
 	// Enqueue the job.
@@ -104,18 +104,18 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 		a.queue.InChannel() <- job
 	}()
 
-	// Wait until executed or timeout.
+	// Wait until dequeued or timeout in queue waiting to be executed.
 	select {
 	case <-time.After(timeout):
-		close(cancelJob)
+		close(canceledJob)
 		return errors.ErrRejectedExecution
-	case result := <-res:
-		return result
+	case <-dequeuedJob:
+		return <-res
 	}
 }
 
-// fromQueueToWorkerPool will get from the queue in a loop the jobs to be
-// executed by the worker pool.
+// fromQueueToWorkerPool will get jobs from the queue in a loop and send
+// to the worker pools to be executed.
 func (a *adaptiveLIFOCodel) fromQueueToWorkerPool() {
 	for {
 		select {
