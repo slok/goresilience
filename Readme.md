@@ -1,14 +1,14 @@
 # Goresilience [![Build Status][travis-image]][travis-url] [![Go Report Card][goreport-image]][goreport-url] [![GoDoc][godoc-image]][godoc-url]
 
-Goresilience is a Go toolkit to increase the resilence of applications. Inspired by hystrix and similar libraries at it's core but at the same time very different:
+Goresilience is a Go toolkit to increase the resilience of applications. Inspired by hystrix and similar libraries at it's core but at the same time very different:
 
 ## Features
 
-- Increase resilence of the programs.
+- Increase resilience of the programs.
 - Easy to extend, test and with clean desing.
 - Go idiomatic.
 - Use the decorator pattern (middleware), like Go's http.Handler does.
-- Ability to create custom resilence flows, simple, advanced, specific... by combining different runners in chains.
+- Ability to create custom resilience flows, simple, advanced, specific... by combining different runners in chains.
 - Safety defaults.
 - Not couple to any framework/library.
 - Prometheus/Openmetrics metrics as first class citizen.
@@ -17,11 +17,11 @@ Goresilience is a Go toolkit to increase the resilence of applications. Inspired
 
 You are wondering, why another circuit breaker library...?
 
-Well, this is not a circuit breaker library. Is true that Go has some good circuit breaker libraries (like [sony/gobreaker], [afex/hystrix-go] or [rubyist/circuitbreaker]). But there is a lack a resilience toolkit that is easy to extend, customize and stablishes a design that can be extended, that's why goresilience born.
+Well, this is not a circuit breaker library. Is true that Go has some good circuit breaker libraries (like [sony/gobreaker], [afex/hystrix-go] or [rubyist/circuitbreaker]). But there is a lack a resilience toolkit that is easy to extend, customize and establishes a design that can be extended, that's why goresilience born.
 
 The aim of goresilience is to use the library with the resilience runners that can be combined or used independently depending on the execution logic nature (complex, simple, performance required, very reliable...).
 
-Also one of the key parts of goreslience is the extension to create new runners yourself and use it in combination with the bulkhead, the circuitbreaker or any of the runners of this library or from others.
+Also one of the key parts of goresilience is the extension to create new runners yourself and use it in combination with the bulkhead, the circuitbreaker or any of the runners of this library or from others.
 
 ## Getting started
 
@@ -133,7 +133,7 @@ Check [example][retry-example].
 
 ### Bulkhead
 
-This runner is based on [bulkhead pattern][bulkhead-pattern], it will control the concurrecy of `goresilience.Func` executions using the same runner.
+This runner is based on [bulkhead pattern][bulkhead-pattern], it will control the concurrency of `goresilience.Func` executions using the same runner.
 
 It also can timeout if a `goresilience.Func` has been waiting too much to be executed on a queue of execution.
 
@@ -229,7 +229,7 @@ To create your own runner, You need to have 2 things in mind.
 - Implement the `goresilience.Runner` interface.
 - Give constructors to get a `goresilience.Middleware`, this way your `Runner` could be chained with other `Runner`s.
 
-In this example (full example [here][extend-example]) we create a new resilience runner to make chaos engeniering that will fail at a constant rate set on the `Config.FailEveryTimes` setting.
+In this example (full example [here][extend-example]) we create a new resilience runner to make chaos engineering that will fail at a constant rate set on the `Config.FailEveryTimes` setting.
 
 Following the library convention with `NewFailer` we get the standalone Runner (the one that is not chainable). And with `NewFailerMiddleware` We get a `Middleware` that can be used with `goresilience.RunnerChain` to chain with other Runners.
 
@@ -248,7 +248,7 @@ func New(cfg Config) goresilience.Runner {
 }
 
 // NewMiddleware returns a new middleware that will wrap runners and will fail
-// evey N times of executions.
+// every N times of executions.
 func NewMiddleware(cfg Config) goresilience.Middleware {
     return func(next goresilience.Runner) goresilience.Runner {
         calledTimes := 0
@@ -295,4 +295,4 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 [aimd]: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
 [concurrency-limit]: https://github.com/Netflix/concurrency-limits
 [aimd]: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
-[fb-code]: https://queue.acm.org/detail.cfm?id=2839461
+[fb-codel]: https://queue.acm.org/detail.cfm?id=2839461
