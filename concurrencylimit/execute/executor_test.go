@@ -40,6 +40,16 @@ func BenchmarkExecutors(b *testing.B) {
 				return e
 			},
 		},
+		{
+			name: "Benchmark with adaptive LIFO + CoDel (10 workers).",
+			getExecutor: func(stopC chan struct{}) execute.Executor {
+				e := execute.NewAdaptiveLIFOCodel(execute.AdaptiveLIFOCodelConfig{
+					StopChannel: stopC,
+				})
+				e.SetWorkerQuantity(10)
+				return e
+			},
+		},
 	}
 
 	for _, bench := range benchs {
