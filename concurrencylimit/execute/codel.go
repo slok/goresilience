@@ -90,13 +90,21 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 		// Send the signal the job has been dequeued.
 		close(dequeuedJob)
 
+		// Check if the job was already cancelled (a lightweight context.Done)
 		select {
 		case <-canceledJob:
 			return
 		default:
 		}
 
-		res <- f()
+		// Execute the function and don't wait if nobody is listening.
+		// in the worst case we have done work for nothing but we don't
+		// get blocked.
+		err := f()
+		select {
+		case res <- err:
+		default:
+		}
 	}
 
 	// Enqueue the job.
