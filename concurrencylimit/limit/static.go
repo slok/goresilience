@@ -1,7 +1,6 @@
 package limit
 
 import (
-	"sync"
 	"time"
 )
 
@@ -9,7 +8,6 @@ import (
 // it will have a static limit.
 type static struct {
 	limit int
-	mu    sync.Mutex
 }
 
 // NewStatic returns a new Static algorithm that is used ofr testing purposes, isn't adaptive
@@ -27,7 +25,5 @@ func (s *static) MeasureSample(_ time.Time, _ int, _ Result) int {
 
 // GetLimit satsifies Algorithm interface.
 func (s *static) GetLimit() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.limit
 }
