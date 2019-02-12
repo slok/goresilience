@@ -79,13 +79,22 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 	}
 
 	// This channel will receive a signal if the job is cancelled.
-	canceledJob := make(chan struct{})
+	canceledJob := make(chan struct{}, 1)
 	// This channel will receive a signal when the job has been dequeued
 	// to be processed.
 	dequeuedJob := make(chan struct{})
 
-	// Create a job and listen if the job has been cancelled already.
-	res := make(chan error)
+	// res is the result channel where this function will grab the result
+	// of the submitted job to the queue.
+	// In order to not block the executed func and leak goroutines we create
+	// a buffered channel in case the executor gets to a condition where it
+	// has finished before we reach the result waiting state.
+	// This way the executor does not need to wait until the result gets received
+	// and the receiver doesn't need to be there before the execution has finished.
+	res := make(chan error, 1)
+
+	// Create a job and check if the job has been cancelled already
+	// in case we need to discard the execution of the client job.
 	job := func() {
 		// Send the signal the job has been dequeued.
 		close(dequeuedJob)
@@ -97,17 +106,13 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 		default:
 		}
 
-		// Execute the function and don't wait if nobody is listening.
-		// in the worst case we have done work for nothing but we don't
-		// get blocked.
-		err := f()
-		select {
-		case res <- err:
-		default:
-		}
+		// Execute the function and send the result over the buffered channel
+		// to avoid getting blocked.
+		res <- f()
 	}
 
-	// Enqueue the job.
+	// Enqueue the job in the queue that knows how to submit jobs to the worker
+	// pool afterwards.
 	go func() {
 		a.queue.InChannel() <- job
 	}()
@@ -115,7 +120,7 @@ func (a *adaptiveLIFOCodel) Execute(f func() error) error {
 	// Wait until dequeued or timeout in queue waiting to be executed.
 	select {
 	case <-time.After(timeout):
-		close(canceledJob)
+		canceledJob <- struct{}{}
 		return errors.ErrRejectedExecution
 	case <-dequeuedJob:
 		return <-res
