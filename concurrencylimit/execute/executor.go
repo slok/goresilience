@@ -1,6 +1,8 @@
 package execute
 
-import "sync"
+import (
+	"sync"
+)
 
 // Executor knows how to limit the execution using different kind of execution workflows
 // like worker pools.
@@ -8,7 +10,7 @@ import "sync"
 // erroring, or directly erroring.
 type Executor interface {
 	// Execute will execute the received function and will return  the
-	// rsult of the executed funciton, or reject error from the executor.
+	// result of the executed function, or reject error from the executor.
 	Execute(f func() error) error
 	WorkerPool
 }

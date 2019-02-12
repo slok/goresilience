@@ -34,8 +34,11 @@ func (c *AdaptiveLIFOCodelConfig) defaults() {
 }
 
 type adaptiveLIFOCodel struct {
-	cfg   AdaptiveLIFOCodelConfig
-	queue *queue
+	cfg AdaptiveLIFOCodelConfig
+	// queue is the queue used to control how the jobs are sent to the worker pool
+	// it knows the different queue priority policies (FIFO, LIFO...).
+	queue *dynamicQueue
+	// worker pool is the one that will execute the jobs.
 	workerPool
 }
 
@@ -57,7 +60,7 @@ func NewAdaptiveLIFOCodel(cfg AdaptiveLIFOCodelConfig) Executor {
 
 	a := &adaptiveLIFOCodel{
 		cfg:        cfg,
-		queue:      newQueue(cfg.StopChannel, enqueueAtEndPolicy, fifoDequeuePolicy),
+		queue:      newDynamicQueue(cfg.StopChannel, enqueueAtEndPolicy, fifoDequeuePolicy),
 		workerPool: newWorkerPool(),
 	}
 	go a.fromQueueToWorkerPool()
@@ -135,7 +138,6 @@ func (a *adaptiveLIFOCodel) fromQueueToWorkerPool() {
 		case <-a.cfg.StopChannel:
 			return
 		case job := <-a.queue.OutChannel():
-			// Send to execution worker.
 			a.workerPool.jobQueue <- job
 		}
 	}
@@ -143,5 +145,5 @@ func (a *adaptiveLIFOCodel) fromQueueToWorkerPool() {
 
 // queueCongested will calculate if the queue is congested based on CoDel algorithm.
 func (a *adaptiveLIFOCodel) queueCongested() bool {
-	return time.Since(a.queue.LastEmptyTime()) > a.cfg.CodelInterval
+	return a.queue.SinceLastEmpty() > a.cfg.CodelInterval
 }

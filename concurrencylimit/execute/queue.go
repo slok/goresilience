@@ -12,30 +12,29 @@ type dequeuePolicy func(beforeJobQ []func()) (job func(), afterJobQ []func())
 // enqueuePolicy will receive a queue of jobs and a job and will queue the job.
 type enqueuePolicy func(job func(), beforeJobQ []func()) (afterJobQ []func())
 
-// queue is a queue that knows how to queue and dequeue objects using different kind of policies.
+// dynamicQueue is a queue that knows how to queue and dequeue objects using different kind of policies.
 // these policies can be changed with the queue is running.
-type queue struct {
+type dynamicQueue struct {
 	in            chan func()
 	out           chan func()
-	mu            sync.Mutex
 	policyMu      sync.RWMutex
+	jobsMu        sync.Mutex
 	jobs          []func()
 	enqueuePolicy enqueuePolicy
 	dequeuePolicy dequeuePolicy
-	stopC         chan struct{}
-	lastEmptyTime time.Time
+	queueStats
+	stopC chan struct{}
 	// wakeupDequeuerC will be use to  wake up the dequeuer that has been sleeping due to no jobs on the queue.
 	wakeUpDequeuerC chan struct{}
 }
 
-func newQueue(stopC chan struct{}, enqueuePolicy enqueuePolicy, dequeuePolicy dequeuePolicy) *queue {
-	q := &queue{
+func newDynamicQueue(stopC chan struct{}, enqueuePolicy enqueuePolicy, dequeuePolicy dequeuePolicy) *dynamicQueue {
+	q := &dynamicQueue{
 		in:            make(chan func()),
 		out:           make(chan func()),
 		enqueuePolicy: enqueuePolicy,
 		dequeuePolicy: dequeuePolicy,
 		stopC:         stopC,
-		lastEmptyTime: time.Now(),
 		// wakeUpDequeuerC will be used to wake up the dequeuer when the queue goes empty so we don't need
 		// to poll the queue every T interval (is an optimization), this way the enqueuer will notify through
 		// this channel the dequeuer that elements have been added and needs to wake up to dequeue those
@@ -60,94 +59,89 @@ func newQueue(stopC chan struct{}, enqueuePolicy enqueuePolicy, dequeuePolicy de
 	return q
 }
 
-func (q *queue) LastEmptyTime() time.Time {
-	// No need a mutex, assume small differences that will end
-	// in the same state in favor of better performance.
-	if q.queueIsEmpty() {
-		q.lastEmptyTime = time.Now()
-	}
-	return q.lastEmptyTime
-}
-
 // InChannel returns a channel where the queue will receive the jobs.
-func (q *queue) InChannel() chan<- func() {
-	return q.in
+func (d *dynamicQueue) InChannel() chan<- func() {
+	return d.in
 }
 
 // OutChannel returns a channel where the jobs of the queue can be dequeued.
-func (q *queue) OutChannel() <-chan func() {
-	return q.out
+func (d *dynamicQueue) OutChannel() <-chan func() {
+	return d.out
 }
 
-func (q *queue) SetEnqueuePolicy(p enqueuePolicy) {
-	q.policyMu.Lock()
-	defer q.policyMu.Unlock()
-	q.enqueuePolicy = p
+func (d *dynamicQueue) SetEnqueuePolicy(p enqueuePolicy) {
+	d.policyMu.Lock()
+	defer d.policyMu.Unlock()
+	d.enqueuePolicy = p
 }
 
-func (q *queue) SetDequeuePolicy(p dequeuePolicy) {
-	q.policyMu.Lock()
-	defer q.policyMu.Unlock()
-	q.dequeuePolicy = p
+func (d *dynamicQueue) SetDequeuePolicy(p dequeuePolicy) {
+	d.policyMu.Lock()
+	defer d.policyMu.Unlock()
+	d.dequeuePolicy = p
 }
 
-func (q *queue) enqueuer() {
+func (d *dynamicQueue) enqueuer() {
 	for {
 		select {
-		case <-q.stopC:
+		case <-d.stopC:
 			return
-		case job := <-q.in:
-			q.mu.Lock()
-			q.policyMu.RLock()
-			q.jobs = q.enqueuePolicy(job, q.jobs)
-			q.policyMu.RUnlock()
+		case job := <-d.in:
+			d.queueStats.inc() // Increase in 1 the queue stats.
+			d.jobsMu.Lock()
+			d.policyMu.RLock()
+			d.jobs = d.enqueuePolicy(job, d.jobs)
+			d.policyMu.RUnlock()
 			// If the dequeuer is sleeping it will get the wake up signal, if not
 			// the channel will not be being read and the default case will be selected.
 			select {
-			case q.wakeUpDequeuerC <- struct{}{}:
+			case d.wakeUpDequeuerC <- struct{}{}:
 			default:
 			}
-			q.mu.Unlock()
+			d.jobsMu.Unlock()
 		}
 	}
 }
 
 var x = 0
 
-func (q *queue) dequeuer() {
+func (d *dynamicQueue) dequeuer() {
 	for {
 		select {
-		case <-q.stopC:
+		case <-d.stopC:
 			return
 		default:
 		}
 		// If there are no jobs, instead of polling, sleep the dequeuer until
 		// a job enters the queue, our enqueuer will try to wake up us when any
 		// job is queued.
-		if q.queueIsEmpty() {
-			<-q.wakeUpDequeuerC
+		if d.queueIsEmpty() {
+			<-d.wakeUpDequeuerC
 
 			// Check again after unblocking because could be the buffered channel signal
 			// of a queue object that we had already processed.
-			if q.queueIsEmpty() {
+			if d.queueIsEmpty() {
 				continue
 			}
 		}
+		// Get a new job
 		var job func()
-		q.mu.Lock()
-		q.policyMu.RLock()
-		job, q.jobs = q.dequeuePolicy(q.jobs)
-		q.policyMu.RUnlock()
-		q.mu.Unlock()
+		d.jobsMu.Lock()
+		d.policyMu.RLock()
+		job, d.jobs = d.dequeuePolicy(d.jobs)
+		d.policyMu.RUnlock()
+		d.jobsMu.Unlock()
+		d.queueStats.decr() // Reduce in 1 the queue stats.
+
 		// Send the correct job with the channel.
-		q.out <- job
+		d.out <- job
 	}
 }
 
-func (q *queue) queueIsEmpty() bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	return len(q.jobs) < 1
+func (d *dynamicQueue) queueIsEmpty() bool {
+	d.jobsMu.Lock()
+	defer d.jobsMu.Unlock()
+	return len(d.jobs) < 1
 }
 
 // Queue Policies.
@@ -180,4 +174,40 @@ var fifoDequeuePolicy = func(queue []func()) (job func(), afterQueue []func()) {
 	default:
 		return queue[0], queue[1:]
 	}
+}
+
+// queueStats will manage the stats of the  queue (current
+// inflight in queue, last time the queue was empty...).
+type queueStats struct {
+	lastTimeEmpty time.Time
+	size          int
+	mu            sync.Mutex
+}
+
+func (q *queueStats) inc() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.size <= 0 {
+		q.lastTimeEmpty = time.Now()
+	}
+	q.size++
+}
+
+func (q *queueStats) decr() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.size--
+	if q.size <= 0 {
+		q.lastTimeEmpty = time.Now()
+	}
+}
+
+// sinceLastEmpty will return how long has been been the queue empty.
+func (q *queueStats) SinceLastEmpty() time.Duration {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.size <= 0 {
+		q.lastTimeEmpty = time.Now()
+	}
+	return time.Since(q.lastTimeEmpty)
 }
