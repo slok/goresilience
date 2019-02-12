@@ -30,7 +30,7 @@ func (c *LIFOConfig) defaults() {
 
 type lifo struct {
 	cfg   LIFOConfig
-	queue *queue
+	queue *dynamicQueue
 	workerPool
 }
 
@@ -40,7 +40,7 @@ func NewLIFO(cfg LIFOConfig) Executor {
 
 	l := &lifo{
 		cfg:        cfg,
-		queue:      newQueue(cfg.StopChannel, enqueueAtEndPolicy, lifoDequeuePolicy),
+		queue:      newDynamicQueue(cfg.StopChannel, enqueueAtEndPolicy, lifoDequeuePolicy),
 		workerPool: newWorkerPool(),
 	}
 	go l.fromQueueToWorkerPool()
