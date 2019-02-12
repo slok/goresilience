@@ -17,8 +17,8 @@ type enqueuePolicy func(job func(), beforeJobQ []func()) (afterJobQ []func())
 type dynamicQueue struct {
 	in            chan func()
 	out           chan func()
-	mu            sync.Mutex
 	policyMu      sync.RWMutex
+	jobsMu        sync.Mutex
 	jobs          []func()
 	enqueuePolicy enqueuePolicy
 	dequeuePolicy dequeuePolicy
@@ -87,8 +87,8 @@ func (d *dynamicQueue) enqueuer() {
 		case <-d.stopC:
 			return
 		case job := <-d.in:
-			d.queueStats.inc()
-			d.mu.Lock()
+			d.queueStats.inc() // Increase in 1 the queue stats.
+			d.jobsMu.Lock()
 			d.policyMu.RLock()
 			d.jobs = d.enqueuePolicy(job, d.jobs)
 			d.policyMu.RUnlock()
@@ -98,7 +98,7 @@ func (d *dynamicQueue) enqueuer() {
 			case d.wakeUpDequeuerC <- struct{}{}:
 			default:
 			}
-			d.mu.Unlock()
+			d.jobsMu.Unlock()
 		}
 	}
 }
@@ -126,20 +126,21 @@ func (d *dynamicQueue) dequeuer() {
 		}
 		// Get a new job
 		var job func()
-		d.mu.Lock()
+		d.jobsMu.Lock()
 		d.policyMu.RLock()
 		job, d.jobs = d.dequeuePolicy(d.jobs)
-		d.queueStats.decr()
 		d.policyMu.RUnlock()
-		d.mu.Unlock()
+		d.jobsMu.Unlock()
+		d.queueStats.decr() // Reduce in 1 the queue stats.
+
 		// Send the correct job with the channel.
 		d.out <- job
 	}
 }
 
 func (d *dynamicQueue) queueIsEmpty() bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.jobsMu.Lock()
+	defer d.jobsMu.Unlock()
 	return len(d.jobs) < 1
 }
 
