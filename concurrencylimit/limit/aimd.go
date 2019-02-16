@@ -7,7 +7,7 @@ import (
 
 // AIMDConfig is the configuration of the algorithm used for the AIMD adaptive limit.
 type AIMDConfig struct {
-	// MinimumLimit is the nimimum limit the agorithm will decrease. It also will start with this limit.
+	// MinimumLimit is the mimimum limit the algorithm will decrease. It also will start with this limit.
 	MinimumLimit int
 	// This is like TCP algorithms `ssthresh`. It will start increasing the limit by one
 	// and when reached to this threshold it will change the mode and increase slowly.
@@ -42,8 +42,8 @@ func (c *AIMDConfig) defaults() {
 }
 
 // NewAIMD returns a new aimd adaptive Limiter algorithm, based on the TCP congestion algorithm with the same name.
-// It increases the limit at a constant rate and when congestion occurs it will decrese by a configured factor.
-// More information abouth this algorithm in: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
+// It increases the limit at a constant rate and when congestion occurs it will decrease by a configured factor.
+// More information about this algorithm in: https://en.wikipedia.org/wiki/Additive_increase/multiplicative_decrease
 func NewAIMD(cfg AIMDConfig) Limiter {
 	cfg.defaults()
 
@@ -60,7 +60,7 @@ type aimd struct {
 }
 
 // MeasureSample satisfies Algorithm interface.
-func (a *aimd) MeasureSample(startTime time.Time, infights int, result Result) int {
+func (a *aimd) MeasureSample(startTime time.Time, inflight int, result Result) int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -75,7 +75,7 @@ func (a *aimd) MeasureSample(startTime time.Time, infights int, result Result) i
 		// This is a real success.
 		// Only increase if we need it. If not we would be increasing forever.
 		// If we have double of inflight request waiting then increase.
-		if infights > currentLimit*a.cfg.LimitIncrementInflightFactor {
+		if inflight > currentLimit*a.cfg.LimitIncrementInflightFactor {
 			return a.increaseLimit()
 		}
 
@@ -111,7 +111,7 @@ func (a *aimd) increaseLimit() int {
 	return int(a.limit)
 }
 
-// GetLimit satsifies Algorithm interface.
+// GetLimit satisfies Algorithm interface.
 func (a *aimd) GetLimit() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
