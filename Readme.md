@@ -5,13 +5,34 @@ Goresilience is a Go toolkit to increase the resilience of applications. Inspire
 ## Features
 
 - Increase resilience of the programs.
-- Easy to extend, test and with clean desing.
+- Easy to extend, test and with clean design.
 - Go idiomatic.
 - Use the decorator pattern (middleware), like Go's http.Handler does.
 - Ability to create custom resilience flows, simple, advanced, specific... by combining different runners in chains.
 - Safety defaults.
 - Not couple to any framework/library.
 - Prometheus/Openmetrics metrics as first class citizen.
+
+## Table of Contents
+
+- [Motivation](#motivation)
+- [Getting started](#getting-started)
+- [Static Runners](#static-runners)
+  - [Timeout](#timeout)
+  - [Retry](#retry)
+  - [Bulkhead](#bulkhead)
+  - [Circuit breaker](#circuit-breaker)
+  - [Chaos](#chaos)
+- [Adaptive Runners](#adaptive-runners)
+  - [Concurrency limit](#concurrency-limit)
+    - [Executors](#executors)
+    - [Limiter](#limiter)
+    - [Result policy](#result-policy)
+- [Other](#other)
+  - [Metrics](#metrics)
+  - [Hystrix-like](#hystrix-like)
+- [Architecture](#architecture)
+- [Extend using your own runners](#extend-using-your-own-runners)
 
 ## Motivation
 
@@ -168,7 +189,8 @@ The Runner is based on 4 components.
 - Runner: This is the runner itself that will be used by the user and is the glue of the `Limiter` and the `Executor`. This will had a policy that will treat the execution result as an error, success or ignore for the Limiter algorithm.
 - Result policy: This is a function that can be configured on the concurrencylimit Runner. This function receives the result of the executed function and returns a result for the limit algorithm. This policy is responsible to tell the limit algorithm if the received error should be count as a success, failure or ignore on the calculation of the concurrency limit. For example: only count the errors that have been 502 other ones ignore.
 
-Check [example][concurrencylimit-example].
+Check [AIMD example][concurrencylimit-example].
+Check [CoDel example][codel-example].
 
 #### Executors
 
@@ -185,9 +207,9 @@ Check [example][concurrencylimit-example].
 
 - `everyExternalErrorAsFailurePolicy`: is the default policy. for errors that are `errors.ErrRejectedExecution` they will act as ignored by the limit algorithms, the rest of the errors will be treat as failures.
 
-### Other
+## Other
 
-#### Metrics
+### Metrics
 
 All the runners can be measured using a `metrics.Recorder`, but instead of passing to every runner, the runners will try to get this recorder from the context. So you can wrap any runner using `metrics.NewMiddleware` and it will activate the metrics support on the wrapped runners. This should be the first runner of the chain.
 
@@ -202,7 +224,7 @@ BenchmarkMeasuredRunner/Without_measurement_(Dummy).-4            300000        
 BenchmarkMeasuredRunner/With_prometheus_measurement.-4            200000             12901 ns/op             752 B/op         15 allocs/op
 ```
 
-#### Hystrix-like
+### Hystrix-like
 
 Using the different runners a hystrix like library flow can be obtained. You can see a simple example of how it can be done on this [example][hystrix-example]
 
@@ -288,6 +310,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 [hystrix-example]: examples/hystrix
 [extend-example]: examples/extend
 [concurrencylimit-example]: examples/concurrencylimit
+[codel-example]: examples/codel
 [amazon-retry]: https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
 [bulkhead-pattern]: https://docs.microsoft.com/en-us/azure/architecture/patterns/bulkhead
 [chaos-engineering]: https://en.wikipedia.org/wiki/Chaos_engineering
