@@ -4,10 +4,10 @@ package concurrencylimit
 // it tries to create a concurrency controlled execution flow using adaptive algorithms
 // from TCP congestion control algorithms.
 //
-// The implementation of concurrencylimit runner is based in 4 componentes:
+// The implementation of concurrencylimit runner is based in 4 components:
 //
 // - The Limiter algorithm: This is the algorithm used to calculate
-// 	 the limit of concunrrency. There are multiple to select based on the type
+// 	 the limit of concurrency. There are multiple to select based on the type
 // 	 of execution flow used on the Runner (client side, server side,
 //   lot's of dependencies...).
 //
@@ -20,7 +20,7 @@ package concurrencylimit
 //	 thing, fallback, return error or whatever.
 //
 // - The Runner: This is the one that implements goresilience.Runner, it's the
-//	 one that will be used directly by a goreslience library user. It glues
+//	 one that will be used directly by a goresilience library user. It glues
 //	 together the algorithm and the executor, knows how to handle the  user Func
 //   to be executed by the executor, knows how to measure the result to give it
 //   to the algorithm to create a new limit dynamically, sets those limits on the
