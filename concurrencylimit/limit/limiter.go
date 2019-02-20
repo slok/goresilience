@@ -26,6 +26,6 @@ type Limiter interface {
 	// It also returns the current limit after measuring the samples.
 	MeasureSample(startTime time.Time, inflight int, result Result) int
 
-	// Gets the curent limit.
+	// Gets the current limit.
 	GetLimit() int
 }

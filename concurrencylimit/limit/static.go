@@ -23,7 +23,7 @@ func (s *static) MeasureSample(_ time.Time, _ int, _ Result) int {
 	return s.GetLimit()
 }
 
-// GetLimit satsifies Algorithm interface.
+// GetLimit satisfies Algorithm interface.
 func (s *static) GetLimit() int {
 	return s.limit
 }
