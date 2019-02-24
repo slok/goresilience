@@ -31,6 +31,7 @@ Goresilience is a Go toolkit to increase the resilience of applications. Inspire
 - [Other](#other)
   - [Metrics](#metrics)
   - [Hystrix-like](#hystrix-like)
+  - [HTTP-middleware](#http-middleware)
 - [Architecture](#architecture)
 - [Extend using your own runners](#extend-using-your-own-runners)
 
@@ -228,6 +229,10 @@ BenchmarkMeasuredRunner/With_prometheus_measurement.-4            200000        
 
 Using the different runners a hystrix like library flow can be obtained. You can see a simple example of how it can be done on this [example][hystrix-example]
 
+### http middleware
+
+Creating HTTP middlewares with goresilience runners is simple and clean. You can see an example of how it can be done on this [example][http-example]. The example shows how you can protect the server by load shedding using an adaptive concurrencylimit `goresilience.Runner`.
+
 ## Architecture
 
 At its core, goresilience is based on a very simple idea, the `Runner` interface, `Runner` interface is the unit of execution, its accepts a `context.Context`, a `goresilience.Func` and returns an `error`.
@@ -308,6 +313,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 [circuitbreaker-example]: examples/circuitbreaker
 [chaos-example]: examples/chaos
 [hystrix-example]: examples/hystrix
+[http-example]: examples/http
 [extend-example]: examples/extend
 [concurrencylimit-example]: examples/concurrencylimit
 [codel-example]: examples/codel
