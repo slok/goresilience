@@ -1,4 +1,4 @@
-## 0.x.x / 2018-x-xx
+## 0.2.0 / 2019-03-02
 
 * Add Adaptive LIFO with CoDel executor to concurrencylimit.
 * Add LIFO executor to concurrencylimit.
