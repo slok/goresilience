@@ -17,5 +17,7 @@ func (dummy) IncBulkheadTimeout()                                   {}
 func (dummy) IncCircuitbreakerState(state string)                   {}
 func (dummy) IncChaosInjectedFailure(kind string)                   {}
 func (dummy) SetConcurrencyLimitInflightExecutions(q int)           {}
+func (dummy) SetConcurrencyLimitExecutingExecutions(q int)          {}
 func (dummy) IncConcurrencyLimitResult(result string)               {}
 func (dummy) SetConcurrencyLimitLimiterLimit(limit int)             {}
+func (dummy) ObserveConcurrencyLimitQueuedTime(start time.Time)     {}
