@@ -1,3 +1,9 @@
+## 0.x.x / 2019-xx-xx
+
+* Pass as additional measuring data the queued time to the concurrencylimit limiters. 
+* Add metrics of the number of executing funcs on concurrencylimit.
+* Add metrics of queued time on concurrencylimit.
+
 ## 0.2.0 / 2019-03-02
 
 * Add Adaptive LIFO with CoDel executor to concurrencylimit.
