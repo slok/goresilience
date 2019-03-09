@@ -24,12 +24,15 @@ type Recorder interface {
 	IncCircuitbreakerState(state string)
 	// IncChaosInjectedFailure increments the number of times injected failure.
 	IncChaosInjectedFailure(kind string)
-	// SetConcurrencyLimitInflightExecutions sets the number of executions at a given moment
-	// executing and queued for execution.
+	// SetConcurrencyLimitInflightExecutions sets the number of queued and executions at a given moment.
 	SetConcurrencyLimitInflightExecutions(q int)
-	// IncConcurrencyLimitResult increments the results obtained by the excutions after aplying the
+	// SetConcurrencyLimitExecutingExecutions sets the number of executions at a given moment.
+	SetConcurrencyLimitExecutingExecutions(q int)
+	// IncConcurrencyLimitResult increments the results obtained by the executions after applying the
 	// limiter result policy.
 	IncConcurrencyLimitResult(result string)
 	// SetConcurrencyLimitLimiterLimit sets the current limit the limiter algorithm has calculated.
 	SetConcurrencyLimitLimiterLimit(limit int)
+	// ObserveConcurrencyLimitQueuedTime will measure the duration of a function waiting on a queue until it's executed.
+	ObserveConcurrencyLimitQueuedTime(start time.Time)
 }

@@ -33,7 +33,7 @@ func TestAIMD(t *testing.T) {
 			},
 			measuref: func(alg limit.Limiter) {
 				for i := 0; i < 5; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 30, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 30, limit.ResultSuccess)
 				}
 			},
 			expLimit: 6,
@@ -46,7 +46,7 @@ func TestAIMD(t *testing.T) {
 			},
 			measuref: func(alg limit.Limiter) {
 				for i := 0; i < 5; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 1, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 1, limit.ResultSuccess)
 				}
 			},
 			expLimit: 1,
@@ -59,7 +59,7 @@ func TestAIMD(t *testing.T) {
 			},
 			measuref: func(alg limit.Limiter) {
 				for i := 0; i < 20; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 30, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 30, limit.ResultSuccess)
 				}
 			},
 			expLimit: 7,
@@ -74,11 +74,11 @@ func TestAIMD(t *testing.T) {
 			measuref: func(alg limit.Limiter) {
 				// Start with a high input. (This will set us on a limit of 50)
 				for i := 0; i < 1000; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 3000, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 3000, limit.ResultSuccess)
 				}
 
 				// Fail and make decrease.
-				alg.MeasureSample(now.Add(-10*time.Millisecond), 3000, limit.ResultFailure)
+				alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 3000, limit.ResultFailure)
 			},
 			expLimit: 30,
 		},
@@ -93,15 +93,14 @@ func TestAIMD(t *testing.T) {
 			measuref: func(alg limit.Limiter) {
 				// Start with a high input. (This will set us on a limit of 50)
 				for i := 0; i < 1000; i++ {
-					alg.MeasureSample(now.Add(-100*time.Millisecond), 3000, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-100*time.Millisecond), 0, 3000, limit.ResultSuccess)
 				}
 
 				// Fail and make decrease.
-				alg.MeasureSample(now.Add(-1*time.Second), 3000, limit.ResultSuccess)
+				alg.MeasureSample(now.Add(-1*time.Second), 0, 3000, limit.ResultSuccess)
 			},
 			expLimit: 30,
 		},
-
 		{
 			name: "If we decrease to 0, we should stop on the minimum limit.",
 			cfg: limit.AIMDConfig{
@@ -112,12 +111,12 @@ func TestAIMD(t *testing.T) {
 			measuref: func(alg limit.Limiter) {
 				// Start with a high input. (This will set us on a limit of 50)
 				for i := 0; i < 1000; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 3000, limit.ResultSuccess)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 3000, limit.ResultSuccess)
 				}
 
 				// Fail and make decrease to the minimum.
 				for i := 0; i < 1000; i++ {
-					alg.MeasureSample(now.Add(-10*time.Millisecond), 3000, limit.ResultFailure)
+					alg.MeasureSample(now.Add(-10*time.Millisecond), 0, 3000, limit.ResultFailure)
 				}
 			},
 			expLimit: 3,

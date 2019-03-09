@@ -65,6 +65,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 type concurrencylimit struct {
 	runner    goresilience.Runner
 	inflights atomicCounter
+	executing atomicCounter
 	cfg       Config
 }
 
@@ -73,11 +74,23 @@ func (c *concurrencylimit) Run(ctx context.Context, f goresilience.Func) error {
 
 	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
-	// Submit the job
+	// Submit the job.
 	currentInflights := c.inflights.Inc()
 	metricsRecorder.SetConcurrencyLimitInflightExecutions(currentInflights)
 
+	var queuedDuration time.Duration // The time in queue.
 	err := c.cfg.Executor.Execute(func() error {
+		// At this point we are being executed, this means we have been dequeued.
+		queuedDuration = time.Since(start)
+		metricsRecorder.ObserveConcurrencyLimitQueuedTime(start)
+		executing := c.executing.Inc()
+		metricsRecorder.SetConcurrencyLimitExecutingExecutions(executing)
+		defer func() {
+			executing = c.executing.Dec()
+			metricsRecorder.SetConcurrencyLimitExecutingExecutions(executing)
+		}()
+
+		// Execute the logic.
 		return c.runner.Run(ctx, f)
 	})
 
@@ -87,8 +100,12 @@ func (c *concurrencylimit) Run(ctx context.Context, f goresilience.Func) error {
 	// Measure to feed the algorithm.
 	result := c.cfg.ExecutionResultPolicy(ctx, err)
 	metricsRecorder.IncConcurrencyLimitResult(string(result))
+	// If the result is an ignore then we don't measure nor set a new limit.
+	if result == limit.ResultIgnore {
+		return err
+	}
 
-	limit := c.cfg.Limiter.MeasureSample(start, currentInflights, result)
+	limit := c.cfg.Limiter.MeasureSample(start, queuedDuration, currentInflights, result)
 	metricsRecorder.SetConcurrencyLimitLimiterLimit(limit)
 
 	// Update the congestion window based on the new algorithm results.

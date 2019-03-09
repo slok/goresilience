@@ -32,7 +32,7 @@ func TestConcurrencyLimit(t *testing.T) {
 				me.On("Execute", mock.Anything).Once().Return(nil)
 
 				// Expect measuring the sample after the execution.
-				ml.On("MeasureSample", mock.Anything, 0, limit.ResultSuccess).Once().Return(measuredLimit)
+				ml.On("MeasureSample", mock.Anything, mock.Anything, 0, limit.ResultSuccess).Once().Return(measuredLimit)
 
 				// Expect setting the limit after measuring with the limiter.
 				me.On("SetWorkerQuantity", measuredLimit)
