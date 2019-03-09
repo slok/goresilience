@@ -271,7 +271,7 @@ type Config struct {
 
 // New is like NewFailerMiddleware but will not wrap any other runner, is standalone.
 func New(cfg Config) goresilience.Runner {
-    return NewFailerMiddleware(cfg)(nil)
+    return NewMiddleware(cfg)(nil)
 }
 
 // NewMiddleware returns a new middleware that will wrap runners and will fail
@@ -290,7 +290,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
             }
 
             // Run using the the chain.
-            next = runnerutils.Sanitize(next)
+            next = goresilience.Sanitize(next)
             return next.Run(ctx, f)
         })
     }
