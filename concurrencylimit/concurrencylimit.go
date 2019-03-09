@@ -79,12 +79,11 @@ func (c *concurrencylimit) Run(ctx context.Context, f goresilience.Func) error {
 	metricsRecorder.SetConcurrencyLimitInflightExecutions(currentInflights)
 
 	var queuedDuration time.Duration // The time in queue.
-	var executing int                // The current executing number of funcs.
 	err := c.cfg.Executor.Execute(func() error {
 		// At this point we are being executed, this means we have been dequeued.
 		queuedDuration = time.Since(start)
 		metricsRecorder.ObserveConcurrencyLimitQueuedTime(start)
-		executing = c.executing.Inc()
+		executing := c.executing.Inc()
 		metricsRecorder.SetConcurrencyLimitExecutingExecutions(executing)
 		defer func() {
 			executing = c.executing.Dec()
