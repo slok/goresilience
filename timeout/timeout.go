@@ -53,7 +53,9 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 			// Set a timeout to the command using the context.
 			// Should we cancel the context if finished...? I guess not, it could continue
 			// the middleware chain.
-			ctx, _ = context.WithTimeout(ctx, cfg.Timeout)
+			ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+
+			defer cancel()
 
 			// Run the command
 			errc := make(chan error)
