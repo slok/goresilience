@@ -25,13 +25,13 @@ func (_m *Limiter) GetLimit() int {
 	return r0
 }
 
-// MeasureSample provides a mock function with given fields: startTime, inflight, result
-func (_m *Limiter) MeasureSample(startTime time.Time, inflight int, result limit.Result) int {
-	ret := _m.Called(startTime, inflight, result)
+// MeasureSample provides a mock function with given fields: startTime, queuedDuration, inflight, result
+func (_m *Limiter) MeasureSample(startTime time.Time, queuedDuration time.Duration, inflight int, result limit.Result) int {
+	ret := _m.Called(startTime, queuedDuration, inflight, result)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(time.Time, int, limit.Result) int); ok {
-		r0 = rf(startTime, inflight, result)
+	if rf, ok := ret.Get(0).(func(time.Time, time.Duration, int, limit.Result) int); ok {
+		r0 = rf(startTime, queuedDuration, inflight, result)
 	} else {
 		r0 = ret.Get(0).(int)
 	}

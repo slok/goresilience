@@ -13,7 +13,9 @@ type AIMDConfig struct {
 	// and when reached to this threshold it will change the mode and increase slowly.
 	// If set to 0 then slow start will be disabled.
 	SlowStartThreshold int
-	// RTTTimeout is the rtt is greater than this value it will be measured as a failure.
+	// RTTTimeout is the rtt is greater than this value it will be measured as a failure. This is an important setting
+	// that depedns a lot on the application, by default will be 2s but your app could need a greater timeout or
+	// lesser one.
 	RTTTimeout time.Duration
 	// BackoffRatio is the ratio used to decrease the limit when a failure occurs.
 	// this will be the way is used: new limit = current limit * backoffRatio.
@@ -60,7 +62,7 @@ type aimd struct {
 }
 
 // MeasureSample satisfies Algorithm interface.
-func (a *aimd) MeasureSample(startTime time.Time, inflight int, result Result) int {
+func (a *aimd) MeasureSample(startTime time.Time, _ time.Duration, inflight int, result Result) int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 

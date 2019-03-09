@@ -24,7 +24,7 @@ type Limiter interface {
 	// MeasureSample will measure the sample of an execution. This data will be used
 	// by the algorithm to know what should be the limit.
 	// It also returns the current limit after measuring the samples.
-	MeasureSample(startTime time.Time, inflight int, result Result) int
+	MeasureSample(startTime time.Time, queuedDuration time.Duration, inflight int, result Result) int
 
 	// Gets the current limit.
 	GetLimit() int

@@ -19,7 +19,7 @@ func NewStatic(limit int) Limiter {
 }
 
 // MeasureSample satisfies Algorithm interface.
-func (s *static) MeasureSample(_ time.Time, _ int, _ Result) int {
+func (s *static) MeasureSample(_ time.Time, _ time.Duration, _ int, _ Result) int {
 	return s.GetLimit()
 }
 
