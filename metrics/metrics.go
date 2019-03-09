@@ -28,11 +28,11 @@ type Recorder interface {
 	SetConcurrencyLimitInflightExecutions(q int)
 	// SetConcurrencyLimitExecutingExecutions sets the number of executions at a given moment.
 	SetConcurrencyLimitExecutingExecutions(q int)
-	// IncConcurrencyLimitResult increments the results obtained by the executions after aplying the
+	// IncConcurrencyLimitResult increments the results obtained by the executions after applying the
 	// limiter result policy.
 	IncConcurrencyLimitResult(result string)
 	// SetConcurrencyLimitLimiterLimit sets the current limit the limiter algorithm has calculated.
 	SetConcurrencyLimitLimiterLimit(limit int)
-	// ObserveCommandExecution will measure the execution of the runner chain.
+	// ObserveConcurrencyLimitQueuedTime will measure the duration of a function waiting on a queue until it's executed.
 	ObserveConcurrencyLimitQueuedTime(start time.Time)
 }
