@@ -29,7 +29,7 @@ var FailureOnExternalErrorPolicy = func(_ context.Context, err error) limit.Resu
 	return limit.ResultIgnore
 }
 
-// NoFailurePolicy will treat will never return a failure, just ignore when an error
+// NoFailurePolicy Will never return a failure, just ignore when an error
 // occurs, this can be used to adapt only on RTT/latency.
 var NoFailurePolicy = func(_ context.Context, err error) limit.Result {
 	// Everything ok.

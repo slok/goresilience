@@ -206,7 +206,9 @@ Check [CoDel example][codel-example].
 
 #### Result policy
 
-- `everyExternalErrorAsFailurePolicy`: is the default policy. for errors that are `errors.ErrRejectedExecution` they will act as ignored by the limit algorithms, the rest of the errors will be treat as failures.
+- `FailureOnExternalErrorPolicy`: Will treat as failure every error that is not from concurrencylimit package.
+- `NoFailurePolicy`: Will never return a failure, just ignore when an error occurs, this can be used to adapt only on RTT/latency.
+- `FailureOnRejectedPolicy`: Will treat as failure every time the execution has been rejected with a `errors.ErrRejectedExecution` error.
 
 ## Other
 
