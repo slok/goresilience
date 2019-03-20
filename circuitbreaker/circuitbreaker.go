@@ -158,7 +158,7 @@ func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {
 func (c *circuitbreaker) preDecideState(metricsRec metrics.Recorder) {
 	state := c.getState()
 	switch state {
-	case statUnused:
+	case stateUnused:
 		// Close the breaker as this is the first time through and generate a statistic.
 		c.moveState(stateClosed, metricsRec)
 	case stateOpen:
