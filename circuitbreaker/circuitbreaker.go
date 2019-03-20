@@ -16,6 +16,7 @@ const (
 	stateOpen     state = "open"
 	stateHalfOpen state = "halfopen"
 	stateClosed   state = "closed"
+	stateUnused   state = "unused"
 )
 
 // Config is the configuration of the circuit breaker.
@@ -124,7 +125,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 
 	return func(next goresilience.Runner) goresilience.Runner {
 		return &circuitbreaker{
-			state:        stateClosed,
+			state:        stateUnused,
 			recorder:     newBucketWindow(cfg.MetricsSlidingWindowBucketQuantity, cfg.MetricsBucketDuration),
 			stateStarted: time.Now(),
 			cfg:          cfg,
@@ -157,6 +158,9 @@ func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {
 func (c *circuitbreaker) preDecideState(metricsRec metrics.Recorder) {
 	state := c.getState()
 	switch state {
+	case statUnused:
+		// Close the breaker as this is the first time through and generate a statistic.
+		c.moveState(stateClosed, metricsRec)
 	case stateOpen:
 		// Check if the circuit has been the required time in closed. If yes then
 		// we move to half open state.
