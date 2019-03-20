@@ -18,7 +18,7 @@ var (
 	promChaosSubsystem            = "chaos"
 	promConcurrencyLimitSubsystem = "concurrencylimit"
 
-    DefaultPrometheusRecorder     = NewPrometheusRecorder(prometheus.DefaultRegister)
+    DefaultPrometheusRecorder     = NewPrometheusRecorder(prometheus.DefaultRegisterer)
 )
 
 type prometheusRec struct {
