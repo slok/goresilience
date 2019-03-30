@@ -1,6 +1,7 @@
 package execute
 
 import (
+	"context"
 	"sync"
 )
 
@@ -11,7 +12,7 @@ import (
 type Executor interface {
 	// Execute will execute the received function and will return  the
 	// result of the executed function, or reject error from the executor.
-	Execute(f func() error) error
+	Execute(ctx context.Context, f func() error) error
 	WorkerPool
 }
 

@@ -29,7 +29,7 @@ func TestConcurrencyLimit(t *testing.T) {
 				measuredLimit := 97
 
 				// Return ok on execution.
-				me.On("Execute", mock.Anything).Once().Return(nil)
+				me.On("Execute", mock.Anything, mock.Anything).Once().Return(nil)
 
 				// Expect measuring the sample after the execution.
 				ml.On("MeasureSample", mock.Anything, mock.Anything, 0, limit.ResultSuccess).Once().Return(measuredLimit)
