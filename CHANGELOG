@@ -1,5 +1,6 @@
 ## 0.x.x / 2019-xx-xx
 
+* (Breaking) Change concurrencylimit executors signature to add context.
 * Pass as additional measuring data the queued time to the concurrencylimit limiters. 
 * Add metrics of the number of executing funcs on concurrencylimit.
 * Add metrics of queued time on concurrencylimit.

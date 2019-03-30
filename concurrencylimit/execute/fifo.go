@@ -1,6 +1,7 @@
 package execute
 
 import (
+	"context"
 	"time"
 
 	"github.com/slok/goresilience/errors"
@@ -40,7 +41,7 @@ type fifo struct {
 }
 
 // Execute satisfies Executor interface.
-func (f *fifo) Execute(fn func() error) error {
+func (f *fifo) Execute(_ context.Context, fn func() error) error {
 	result := make(chan error)
 	job := func() {
 		result <- fn()

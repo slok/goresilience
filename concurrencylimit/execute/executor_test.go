@@ -1,6 +1,7 @@
 package execute_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -68,7 +69,7 @@ func BenchmarkExecutors(b *testing.B) {
 				for i := 0; i < 50; i++ {
 					go func() {
 						defer wg.Done()
-						exec.Execute(benchf)
+						exec.Execute(context.TODO(), benchf)
 					}()
 				}
 				wg.Wait()

@@ -1,6 +1,7 @@
 package execute_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -53,7 +54,7 @@ func TestExecuteFIFO(t *testing.T) {
 			results := make(chan error)
 			for i := 0; i < test.numberCalls; i++ {
 				go func() {
-					results <- exec.Execute(test.f)
+					results <- exec.Execute(context.TODO(), test.f)
 				}()
 			}
 
@@ -104,7 +105,7 @@ func TestExecuteFIFOOrder(t *testing.T) {
 				time.Sleep(1 * time.Millisecond)
 				i := i
 				go func() {
-					exec.Execute(func() error {
+					exec.Execute(context.TODO(), func() error {
 						time.Sleep(2 * time.Millisecond)
 						results <- i
 						return nil

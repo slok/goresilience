@@ -1,6 +1,7 @@
 package execute
 
 import (
+	"context"
 	"time"
 
 	"github.com/slok/goresilience/errors"
@@ -48,7 +49,7 @@ func NewLIFO(cfg LIFOConfig) Executor {
 	return l
 }
 
-func (l *lifo) Execute(f func() error) error {
+func (l *lifo) Execute(_ context.Context, f func() error) error {
 	// This channel will receive a signal when the job has been dequeued
 	// to be processed.
 	dequeuedJob := make(chan struct{})

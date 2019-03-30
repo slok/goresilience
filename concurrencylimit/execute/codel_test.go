@@ -1,6 +1,7 @@
 package execute_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -30,7 +31,7 @@ func TestCodel(t *testing.T) {
 					time.Sleep(2 * time.Millisecond)
 					i := i
 					go func() {
-						exec.Execute(func() error {
+						exec.Execute(context.TODO(), func() error {
 							time.Sleep(1 * time.Millisecond)
 							resultC <- fmt.Sprintf("id-%d", i)
 							return nil
@@ -101,7 +102,7 @@ func TestCodel(t *testing.T) {
 					time.Sleep(10 * time.Millisecond)
 					i := i
 					go func() {
-						exec.Execute(func() error {
+						exec.Execute(context.TODO(), func() error {
 							time.Sleep(100 * time.Millisecond)
 							resultC <- fmt.Sprintf("id-%d", i)
 							return nil
@@ -118,7 +119,7 @@ func TestCodel(t *testing.T) {
 					time.Sleep(1 * time.Millisecond)
 					i := i
 					go func() {
-						exec.Execute(func() error {
+						exec.Execute(context.TODO(), func() error {
 							time.Sleep(1 * time.Millisecond)
 							resultC <- fmt.Sprintf("id-%d", i)
 							return nil
