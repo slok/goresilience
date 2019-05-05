@@ -139,6 +139,21 @@ func TestPrometheus(t *testing.T) {
 			},
 		},
 		{
+			name: "Recording circuitbreaker circuit breaker condition should expose the condition.",
+			recordMetrics: func(m metrics.Recorder) {
+				m1 := m.WithID("test")
+				m2 := m.WithID("test2")
+				m1.SetCircuitbreakerCurrentCondition(0) // new
+				m1.SetCircuitbreakerCurrentCondition(3) // open
+				m1.SetCircuitbreakerCurrentCondition(1) // close
+				m2.SetCircuitbreakerCurrentCondition(2) // half-open
+			},
+			expMetrics: []string{
+				`goresilience_circuitbreaker_current_condition{id="test"} 1`,
+				`goresilience_circuitbreaker_current_condition{id="test2"} 2`,
+			},
+		},
+		{
 			name: "Recording chaos metrics should expose the metrics.",
 			recordMetrics: func(m metrics.Recorder) {
 				m1 := m.WithID("test")

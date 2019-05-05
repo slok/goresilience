@@ -30,6 +30,10 @@ func (st state) label () string {
 	return stateStrings[st]
 }
 
+func (st state) condition () int {
+	return int(st)
+}
+
 // Config is the configuration of the circuit breaker.
 type Config struct {
 	// ErrorPercentThresholdToOpen is the error percent based on total execution requests
@@ -238,7 +242,8 @@ func (c *circuitbreaker) moveState(state state, metricsRec metrics.Recorder) {
 
 	// Only change if the state changed.
 	if c.state != state {
-		metricsRec.IncCircuitbreakerState(string(state))
+		metricsRec.IncCircuitbreakerState(state.label())
+		metricsRec.SetCircuitbreakerCurrentCondition(state.condition())
 
 		c.state = state
 		c.stateStarted = time.Now()

@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
+const (
 	promNamespace = "goresilience"
 
 	promCommandSubsystem          = "command"
@@ -18,8 +18,9 @@ var (
 	promChaosSubsystem            = "chaos"
 	promConcurrencyLimitSubsystem = "concurrencylimit"
 
-    DefaultPrometheusRecorder     = NewPrometheusRecorder(prometheus.DefaultRegisterer)
 )
+
+var DefaultPrometheusRecorder     = NewPrometheusRecorder(prometheus.DefaultRegisterer)
 
 type prometheusRec struct {
 	// Metrics.
@@ -30,6 +31,7 @@ type prometheusRec struct {
 	bulkProcessed                  *prometheus.CounterVec
 	bulkTimeouts                   *prometheus.CounterVec
 	cbStateChanges                 *prometheus.CounterVec
+	cbCurrentCondition             *prometheus.GaugeVec
 	chaosFailureInjections         *prometheus.CounterVec
 	concurrencyLimitInflights      *prometheus.GaugeVec
 	concurrencyLimitExecuting      *prometheus.GaugeVec
@@ -61,6 +63,7 @@ func (p prometheusRec) WithID(id string) Recorder {
 		bulkProcessed:                  p.bulkProcessed,
 		bulkTimeouts:                   p.bulkTimeouts,
 		cbStateChanges:                 p.cbStateChanges,
+		cbCurrentCondition:             p.cbCurrentCondition,
 		chaosFailureInjections:         p.chaosFailureInjections,
 		concurrencyLimitInflights:      p.concurrencyLimitInflights,
 		concurrencyLimitExecuting:      p.concurrencyLimitExecuting,
@@ -124,6 +127,13 @@ func (p *prometheusRec) registerMetrics() {
 		Help:      "Total number of state changes made by the circuit breaker runner.",
 	}, []string{"id", "state"})
 
+	p.cbCurrentCondition = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promCBSubsystem,
+		Name:      "current_condition",
+		Help:      "The current condition of the circuit breaker runner.",
+	}, []string{"id"})
+
 	p.chaosFailureInjections = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Subsystem: promChaosSubsystem,
@@ -174,6 +184,7 @@ func (p *prometheusRec) registerMetrics() {
 		p.bulkProcessed,
 		p.bulkTimeouts,
 		p.cbStateChanges,
+		p.cbCurrentCondition,
 		p.chaosFailureInjections,
 		p.concurrencyLimitInflights,
 		p.concurrencyLimitExecuting,
@@ -210,6 +221,10 @@ func (p prometheusRec) IncBulkheadTimeout() {
 
 func (p prometheusRec) IncCircuitbreakerState(state string) {
 	p.cbStateChanges.WithLabelValues(p.id, state).Inc()
+}
+
+func (p prometheusRec) SetCircuitbreakerCurrentCondition(condition int) {
+	p.cbCurrentCondition.WithLabelValues(p.id).Set(float64(condition))
 }
 
 func (p prometheusRec) IncChaosInjectedFailure(kind string) {
