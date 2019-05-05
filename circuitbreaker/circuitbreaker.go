@@ -10,14 +10,25 @@ import (
 	"github.com/slok/goresilience/metrics"
 )
 
-type state string
+type state uint
 
 const (
-	stateOpen     state = "open"
-	stateHalfOpen state = "halfopen"
-	stateClosed   state = "closed"
-	stateNew   state = "new"
+	stateNew   state = iota
+	stateOpen
+	stateHalfOpen
+	stateClosed
 )
+
+var stateStrings = []string {
+	"new",
+	"open",
+	"halfopen",
+	"closed",
+}
+
+func (st state) label () string {
+	return stateStrings[st]
+}
 
 // Config is the configuration of the circuit breaker.
 type Config struct {
