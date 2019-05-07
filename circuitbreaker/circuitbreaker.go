@@ -243,7 +243,7 @@ func (c *circuitbreaker) moveState(state state, metricsRec metrics.Recorder) {
 	// Only change if the state changed.
 	if c.state != state {
 		metricsRec.IncCircuitbreakerState(state.label())
-		metricsRec.SetCircuitbreakerCurrentCondition(state.condition())
+		metricsRec.SetCircuitbreakerCurrentState(state.condition())
 
 		c.state = state
 		c.stateStarted = time.Now()

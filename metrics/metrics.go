@@ -22,8 +22,8 @@ type Recorder interface {
 	IncBulkheadTimeout()
 	// IncCircuitbreakerState increments the number of state change.
 	IncCircuitbreakerState(state string)
-	// SetCircuitbreakerCurrentCondition sets the condition of ciruit breaker.
-	SetCircuitbreakerCurrentCondition(condition int)
+	// SetCircuitbreakerCurrentState records the state of ciruit breaker.
+	SetCircuitbreakerCurrentState(condition int)
 	// IncChaosInjectedFailure increments the number of times injected failure.
 	IncChaosInjectedFailure(kind string)
 	// SetConcurrencyLimitInflightExecutions sets the number of queued and executions at a given moment.

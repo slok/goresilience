@@ -31,7 +31,7 @@ type prometheusRec struct {
 	bulkProcessed                  *prometheus.CounterVec
 	bulkTimeouts                   *prometheus.CounterVec
 	cbStateChanges                 *prometheus.CounterVec
-	cbCurrentCondition             *prometheus.GaugeVec
+	cbCurrentState                 *prometheus.GaugeVec
 	chaosFailureInjections         *prometheus.CounterVec
 	concurrencyLimitInflights      *prometheus.GaugeVec
 	concurrencyLimitExecuting      *prometheus.GaugeVec
@@ -63,7 +63,7 @@ func (p prometheusRec) WithID(id string) Recorder {
 		bulkProcessed:                  p.bulkProcessed,
 		bulkTimeouts:                   p.bulkTimeouts,
 		cbStateChanges:                 p.cbStateChanges,
-		cbCurrentCondition:             p.cbCurrentCondition,
+		cbCurrentState:                 p.cbCurrentState,
 		chaosFailureInjections:         p.chaosFailureInjections,
 		concurrencyLimitInflights:      p.concurrencyLimitInflights,
 		concurrencyLimitExecuting:      p.concurrencyLimitExecuting,
@@ -127,11 +127,11 @@ func (p *prometheusRec) registerMetrics() {
 		Help:      "Total number of state changes made by the circuit breaker runner.",
 	}, []string{"id", "state"})
 
-	p.cbCurrentCondition = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	p.cbCurrentState = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: promNamespace,
 		Subsystem: promCBSubsystem,
-		Name:      "current_condition",
-		Help:      "The current condition of the circuit breaker runner.",
+		Name:      "current_state",
+		Help:      "The current state of the circuit breaker runner.",
 	}, []string{"id"})
 
 	p.chaosFailureInjections = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -184,7 +184,7 @@ func (p *prometheusRec) registerMetrics() {
 		p.bulkProcessed,
 		p.bulkTimeouts,
 		p.cbStateChanges,
-		p.cbCurrentCondition,
+		p.cbCurrentState,
 		p.chaosFailureInjections,
 		p.concurrencyLimitInflights,
 		p.concurrencyLimitExecuting,
@@ -223,8 +223,8 @@ func (p prometheusRec) IncCircuitbreakerState(state string) {
 	p.cbStateChanges.WithLabelValues(p.id, state).Inc()
 }
 
-func (p prometheusRec) SetCircuitbreakerCurrentCondition(condition int) {
-	p.cbCurrentCondition.WithLabelValues(p.id).Set(float64(condition))
+func (p prometheusRec) SetCircuitbreakerCurrentState(condition int) {
+	p.cbCurrentState.WithLabelValues(p.id).Set(float64(condition))
 }
 
 func (p prometheusRec) IncChaosInjectedFailure(kind string) {

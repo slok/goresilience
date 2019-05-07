@@ -15,7 +15,7 @@ func (dummy) IncBulkheadQueued()                                    {}
 func (dummy) IncBulkheadProcessed()                                 {}
 func (dummy) IncBulkheadTimeout()                                   {}
 func (dummy) IncCircuitbreakerState(state string)                   {}
-func (dummy) SetCircuitbreakerCurrentCondition(condition int)       {}
+func (dummy) SetCircuitbreakerCurrentState(condition int)           {}
 func (dummy) IncChaosInjectedFailure(kind string)                   {}
 func (dummy) SetConcurrencyLimitInflightExecutions(q int)           {}
 func (dummy) SetConcurrencyLimitExecutingExecutions(q int)          {}
