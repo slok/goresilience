@@ -53,6 +53,19 @@ func TestTimeout(t *testing.T) {
 			},
 			expErr: grerrors.ErrTimeout,
 		},
+		{
+			name: "A command that has been cancelled should not continue and don't let the function panic.",
+			cfg: timeout.Config{
+				Timeout: 1,
+				Cancel: true,
+			},
+			f: func(ctx context.Context) error {
+				time.Sleep(1 * time.Millisecond)
+				panic("this should not happen")
+				return errors.New("this will never be returned")
+			},
+			expErr: grerrors.ErrTimeout,
+		},
 	}
 
 	for _, test := range tests {

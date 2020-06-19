@@ -17,6 +17,9 @@ const (
 type Config struct {
 	// Timeout is the duration that will be waited before giving as a timeouted execution.
 	Timeout time.Duration
+	// Cancel decides if a context is canceled on a timeouted execution.
+	// This is useful to stop the middleware chain on timeout.
+	Cancel bool
 }
 
 func (c *Config) defaults() {
@@ -51,9 +54,10 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 			metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
 			// Set a timeout to the command using the context.
-			// Should we cancel the context if finished...? I guess not, it could continue
-			// the middleware chain.
-			ctx, _ = context.WithTimeout(ctx, cfg.Timeout)
+			ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+			if cfg.Cancel {
+				defer cancel()
+			}
 
 			// Run the command
 			errc := make(chan error)
