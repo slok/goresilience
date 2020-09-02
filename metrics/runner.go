@@ -28,7 +28,8 @@ func RecorderFromContext(ctx context.Context) (recorder Recorder, ok bool) {
 	return rec, true
 }
 
-func setRecorderOnContext(ctx context.Context, r Recorder) context.Context {
+// SetRecorderOnContext will set a metrics recorder to the context.
+func SetRecorderOnContext(ctx context.Context, r Recorder) context.Context {
 	return context.WithValue(ctx, ctxRecorderKey, r)
 }
 
@@ -50,7 +51,7 @@ func NewMiddleware(id string, rec Recorder) goresilience.Middleware {
 			// Set the recorder.
 			// WARNING: This could have a performance impact due to the usage of reflect package
 			// by the context. Measure if this has a big impact.
-			ctx = setRecorderOnContext(ctx, rec)
+			ctx = SetRecorderOnContext(ctx, rec)
 
 			next = goresilience.SanitizeRunner(next)
 			err = next.Run(ctx, f)
