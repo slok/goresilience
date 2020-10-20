@@ -21,30 +21,36 @@ type Config struct {
 	Times int
 }
 
+const (
+	defaultWaitBase     = 20 * time.Millisecond
+	defaultTimesToRetry = 3
+)
+
 func (c *Config) defaults() {
 	if c.WaitBase <= 0 {
-		c.WaitBase = 20 * time.Millisecond
+		c.WaitBase = defaultWaitBase
 	}
 
 	// TODO: Allow -1 for forever retries?
 	if c.Times <= 0 {
-		c.Times = 3
+		c.Times = defaultTimesToRetry
 	}
 }
 
 // New returns a new retry ready executor, the execution will be retried the number
-// of times specificed on the config (+1, the original execution that is not a retry).
+// of times specified on the config (+1, the original execution that is not a retry).
 func New(cfg Config) goresilience.Runner {
 	return NewMiddleware(cfg)(nil)
 }
 
 // NewMiddleware returns a new retry middleware, the execution will be retried the number
-// of times specificed on the config (+1, the original execution that is not a retry).
+// of times specified on the config (+1, the original execution that is not a retry).
 func NewMiddleware(cfg Config) goresilience.Middleware {
 	cfg.defaults()
 
 	return func(next goresilience.Runner) goresilience.Runner {
 		next = goresilience.SanitizeRunner(next)
+		random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		// Use the algorithms for jitter and backoff.
 		// https://aws.amazon.com/es/blogs/architecture/exponential-backoff-and-jitter/
@@ -52,7 +58,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 			var err error
 			metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
-			// Start the attemps. (it's 1 + the number of retries.)
+			// Start the attempts (it's 1 + the number of retries.)
 			for i := 0; i <= cfg.Times; i++ {
 				// Only measure the retries.
 				if i != 0 {
@@ -69,16 +75,14 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 
 				// Apply Backoff.
 				// The backoff is calculated exponentially based on a base time
-				// and the attemp of the retry.
+				// and the attempt of the retry.
 				if !cfg.DisableBackoff {
-					exp := math.Exp2(float64(i + 1))
+					exp := math.Exp2(float64(i))
 					waitDuration = time.Duration(float64(cfg.WaitBase) * exp)
-					// Round to millisecs.
-					waitDuration = waitDuration.Round(time.Millisecond)
-
 					// Apply "full jitter".
-					random := rand.New(rand.NewSource(time.Now().UnixNano()))
 					waitDuration = time.Duration(float64(waitDuration) * random.Float64())
+
+					waitDuration = waitDuration.Round(time.Millisecond)
 				}
 
 				time.Sleep(waitDuration)
