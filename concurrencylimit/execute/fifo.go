@@ -42,7 +42,7 @@ type fifo struct {
 
 // Execute satisfies Executor interface.
 func (f *fifo) Execute(_ context.Context, fn func() error) error {
-	result := make(chan error)
+	result := make(chan error, 1)
 	job := func() {
 		result <- fn()
 	}

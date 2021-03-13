@@ -54,7 +54,7 @@ func (l *lifo) Execute(_ context.Context, f func() error) error {
 	// to be processed.
 	dequeuedJob := make(chan struct{})
 	canceledJob := make(chan struct{})
-	res := make(chan error)
+	res := make(chan error, 1)
 	job := func() {
 		// Send the signal the job has been dequeued.
 		close(dequeuedJob)
