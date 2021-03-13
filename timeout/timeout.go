@@ -60,7 +60,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 			}
 
 			// Run the command
-			errc := make(chan error)
+			errc := make(chan error, 1)
 			go func() {
 				errc <- next.Run(ctx, f)
 			}()
