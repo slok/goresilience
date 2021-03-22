@@ -74,7 +74,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 func (b bulkhead) Run(ctx context.Context, f goresilience.Func) error {
 	metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
-	resC := make(chan error) // The result channel.
+	resC := make(chan error, 1) // The result channel.
 	job := func() {
 		metricsRecorder.IncBulkheadProcessed()
 		resC <- b.runner.Run(ctx, f)
