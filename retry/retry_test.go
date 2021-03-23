@@ -3,7 +3,6 @@ package retry_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -13,16 +12,16 @@ import (
 	"github.com/slok/goresilience/retry"
 )
 
-var err = errors.New("wanted error")
+var err = errors.New("error wanted")
 
-type counterFailer struct {
-	notFailOnAttemp int
-	timesExecuted   int
+type eventuallySucceed struct {
+	successfulExecutionAttempt int
+	timesExecuted              int
 }
 
-func (c *counterFailer) Run(ctx context.Context) error {
+func (c *eventuallySucceed) Run(_ context.Context) error {
 	c.timesExecuted++
-	if c.timesExecuted == c.notFailOnAttemp {
+	if c.timesExecuted == c.successfulExecutionAttempt {
 		return nil
 	}
 
@@ -45,7 +44,7 @@ func TestRetryResult(t *testing.T) {
 				Times:          3,
 			},
 			getF: func() goresilience.Func {
-				c := &counterFailer{notFailOnAttemp: 4}
+				c := &eventuallySucceed{successfulExecutionAttempt: 4}
 				return c.Run
 			},
 			expErr: nil,
@@ -58,7 +57,7 @@ func TestRetryResult(t *testing.T) {
 				Times:          3,
 			},
 			getF: func() goresilience.Func {
-				c := &counterFailer{notFailOnAttemp: 5}
+				c := &eventuallySucceed{successfulExecutionAttempt: 5}
 				return c.Run
 			},
 			expErr: err,
@@ -67,17 +66,15 @@ func TestRetryResult(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert := assert.New(t)
+			exec := retry.New(test.cfg)
+			err := exec.Run(context.TODO(), test.getF())
 
-			cmd := retry.New(test.cfg)
-			err := cmd.Run(context.TODO(), test.getF())
-
-			assert.Equal(test.expErr, err)
+			assert.Equal(t, test.expErr, err)
 		})
 	}
 }
 
-var notime = time.Time{}
+var noTime = time.Time{}
 
 // patternTimer will store the execution time passed
 // (in milliseconds) between the executions.
@@ -86,26 +83,28 @@ type patternTimer struct {
 	waitPattern   []time.Duration
 }
 
-func (p *patternTimer) Run(ctx context.Context) error {
+func (p *patternTimer) Run(_ context.Context) error {
 	now := time.Now()
 
-	if p.prevExecution != notime {
+	if p.prevExecution == noTime {
+		p.prevExecution = now
+	} else {
 		durationSince := now.Sub(p.prevExecution)
 		p.prevExecution = now
 		p.waitPattern = append(p.waitPattern, durationSince.Round(time.Millisecond))
 	}
 
-	return errors.New("wanted error")
+	return errors.New("error wanted")
 }
 
 func TestConstantRetry(t *testing.T) {
 	tests := []struct {
 		name           string
 		cfg            retry.Config
-		expWaitPattern []time.Duration // use ints so we can used rounded.
+		expWaitPattern []time.Duration
 	}{
 		{
-			name: "A retry executions without backoff should be at constant rate. (2ms, 9 retries)",
+			name: "A retry executions without backoff should be at constant rate. (10ms, 4 retries)",
 			cfg: retry.Config{
 				WaitBase:       10 * time.Millisecond,
 				DisableBackoff: true,
@@ -119,7 +118,7 @@ func TestConstantRetry(t *testing.T) {
 			},
 		},
 		{
-			name: "A retry executions without backoff should be at constant rate (5ms, 4 retries)",
+			name: "A retry executions without backoff should be at constant rate (30ms, 2 retries)",
 			cfg: retry.Config{
 				WaitBase:       30 * time.Millisecond,
 				DisableBackoff: true,
@@ -134,62 +133,60 @@ func TestConstantRetry(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert := assert.New(t)
-
 			exec := retry.New(test.cfg)
 			pt := &patternTimer{}
-			exec.Run(context.TODO(), pt.Run)
+			_ = exec.Run(context.TODO(), pt.Run)
 
-			assert.InEpsilonSlice(test.expWaitPattern, pt.waitPattern, 0.08)
+			assert.Equal(t, test.expWaitPattern, pt.waitPattern)
 		})
 	}
 }
 
 func TestBackoffJitterRetry(t *testing.T) {
-	tests := []struct {
-		name  string
-		cfg   retry.Config
-		times int
-	}{
-		{
-			name: "Multiple retry executions with backoff should have all different wait times.",
-			cfg: retry.Config{
+	t.Run("Multiple retry executions with backoff should have all different wait times.", func(t *testing.T) {
+		// We do several iterations of the same process to reduce the probability that
+		// the property we are testing for was obtained by chance.
+		const numberOfIterations = 3
+		for i := 0; i < numberOfIterations; i++ {
+			pt := &patternTimer{}
+			exec := retry.New(retry.Config{
 				WaitBase:       50 * time.Millisecond,
 				DisableBackoff: false,
 				Times:          2,
-			},
-			times: 3,
-		},
-	}
+			})
+			_ = exec.Run(context.TODO(), pt.Run)
+			occurrences := make(map[time.Duration]struct{})
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			occurrences := map[string]struct{}{}
-
-			// Let's do N iterations of the same process.
-			for i := 0; i < test.times; i++ {
-				runner := &patternTimer{}
-				exec := retry.New(test.cfg)
-				exec.Run(context.TODO(), runner.Run)
-
-				// Check that the wait pattern results (diferent from 0)
-				// are different, this guarantees that at least we are waiting
-				// different durations..
-				for _, dur := range runner.waitPattern {
-					if dur == 0 {
-						continue
-					}
-
-					// Round to microseconds.
-					roundedDur := dur.Round(time.Microsecond)
-					key := fmt.Sprintf("%s", roundedDur)
-					_, ok := occurrences[key]
-					assert.False(ok, "using a exponential jitter a iteration wait time should be different from another, this iteration wait time already appeared (%s)", key)
-					occurrences[key] = struct{}{}
+			// Check that the wait pattern results (different from 0)
+			// are different, this guarantees that at least we are waiting
+			// different durations.
+			for _, dur := range pt.waitPattern {
+				if dur == 0 {
+					continue
 				}
+
+				_, ok := occurrences[dur]
+				assert.False(t, ok, "Using exponential jitter, attempts' waiting times should be different from one another. This attempt's waiting time has already appeared before (%s)", dur)
+				occurrences[dur] = struct{}{}
 			}
-		})
-	}
+		}
+	})
+
+	t.Run("Multiple retry executions with backoff should have the first waiting time to be no more than the base waiting time configured.", func(t *testing.T) {
+		// We do several iterations of the same process to reduce the probability that
+		// the property we are testing for was obtained by chance.
+		const numberOfIterations = 3
+		for i := 0; i < numberOfIterations; i++ {
+			pt := &patternTimer{}
+			cfg := retry.Config{
+				WaitBase:       50 * time.Millisecond,
+				DisableBackoff: false,
+				Times:          2,
+			}
+			exec := retry.New(cfg)
+			_ = exec.Run(context.TODO(), pt.Run)
+
+			assert.True(t, pt.waitPattern[0] <= cfg.WaitBase)
+		}
+	})
 }
