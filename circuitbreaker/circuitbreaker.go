@@ -10,13 +10,29 @@ import (
 	"github.com/slok/goresilience/metrics"
 )
 
-type state string
+type state uint
 
 const (
-	stateOpen     state = "open"
-	stateHalfOpen state = "halfopen"
-	stateClosed   state = "closed"
+	stateNew   state = iota
+	stateOpen
+	stateHalfOpen
+	stateClosed
 )
+
+var stateStrings = []string {
+	"new",
+	"open",
+	"halfopen",
+	"closed",
+}
+
+func (st state) label () string {
+	return stateStrings[st]
+}
+
+func (st state) condition () int {
+	return int(st)
+}
 
 // Config is the configuration of the circuit breaker.
 type Config struct {
@@ -124,7 +140,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 
 	return func(next goresilience.Runner) goresilience.Runner {
 		return &circuitbreaker{
-			state:        stateClosed,
+			state:        stateNew,
 			recorder:     newBucketWindow(cfg.MetricsSlidingWindowBucketQuantity, cfg.MetricsBucketDuration),
 			stateStarted: time.Now(),
 			cfg:          cfg,
@@ -157,6 +173,9 @@ func (c *circuitbreaker) Run(ctx context.Context, f goresilience.Func) error {
 func (c *circuitbreaker) preDecideState(metricsRec metrics.Recorder) {
 	state := c.getState()
 	switch state {
+	case stateNew:
+		// Close the breaker as this is the first time through and generate a statistic.
+		c.moveState(stateClosed, metricsRec)
 	case stateOpen:
 		// Check if the circuit has been the required time in closed. If yes then
 		// we move to half open state.
@@ -223,7 +242,8 @@ func (c *circuitbreaker) moveState(state state, metricsRec metrics.Recorder) {
 
 	// Only change if the state changed.
 	if c.state != state {
-		metricsRec.IncCircuitbreakerState(string(state))
+		metricsRec.IncCircuitbreakerState(state.label())
+		metricsRec.SetCircuitbreakerCurrentState(state.condition())
 
 		c.state = state
 		c.stateStarted = time.Now()
