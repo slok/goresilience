@@ -2,6 +2,7 @@ package retry
 
 import (
 	"context"
+	"github.com/slok/goresilience/errors"
 	"math"
 	"math/rand"
 	"time"
@@ -52,7 +53,7 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 			var err error
 			metricsRecorder, _ := metrics.RecorderFromContext(ctx)
 
-			// Start the attemps. (it's 1 + the number of retries.)
+			// Start the attempts. (it's 1 + the number of retries.)
 			for i := 0; i <= cfg.Times; i++ {
 				// Only measure the retries.
 				if i != 0 {
@@ -62,6 +63,11 @@ func NewMiddleware(cfg Config) goresilience.Middleware {
 				err = next.Run(ctx, f)
 				if err == nil {
 					return nil
+				}
+
+				// If the context is cancelled no retry will succeed
+				if err == errors.ErrContextCanceled {
+					return err
 				}
 
 				// We need to sleep before making a retry.
