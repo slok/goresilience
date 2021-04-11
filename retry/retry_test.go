@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	goresilienceerrors "github.com/slok/goresilience/errors"
+	"math"
 	"testing"
 	"time"
 
@@ -192,4 +194,28 @@ func TestBackoffJitterRetry(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRetryWithContextCancel(t *testing.T) {
+	t.Run("Context is cancelled pre-execution", func(t *testing.T) {
+		assert := assert.New(t)
+		ctx, cancel := context.WithCancel(context.TODO())
+		cancel()
+		exec := retry.New(retry.Config{Times: math.MaxInt32})
+		err := exec.Run(ctx, func(ctx context.Context) error {
+			return fmt.Errorf("test error")
+		})
+		assert.EqualError(err, goresilienceerrors.ErrContextCanceled.Error())
+	})
+
+	t.Run("Context is cancel after deadline", func(t *testing.T) {
+		assert := assert.New(t)
+		ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Nanosecond)
+		defer cancel()
+		exec := retry.New(retry.Config{Times: math.MaxInt32})
+		err := exec.Run(ctx, func(ctx context.Context) error {
+			return fmt.Errorf("test error")
+		})
+		assert.EqualError(err, goresilienceerrors.ErrContextCanceled.Error())
+	})
 }
