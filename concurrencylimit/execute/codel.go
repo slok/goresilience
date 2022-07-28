@@ -69,7 +69,7 @@ func NewAdaptiveLIFOCodel(cfg AdaptiveLIFOCodelConfig) Executor {
 	return a
 }
 
-func (a *adaptiveLIFOCodel) Execute(_ context.Context, f func() error) error {
+func (a *adaptiveLIFOCodel) Execute(ctx context.Context, f func() error) error {
 	var timeout time.Duration
 	// If we are congested then we need to change de queuing policy to LIFO
 	// and set the congestion timeout to the aggressive CoDel timeout.
@@ -121,11 +121,14 @@ func (a *adaptiveLIFOCodel) Execute(_ context.Context, f func() error) error {
 		a.queue.InChannel() <- job
 	}()
 
-	// Wait until dequeued or timeout in queue waiting to be executed.
+	// Wait until dequeued, ctx cancelation, or timeout in queue waiting to be executed.
 	select {
 	case <-time.After(timeout):
 		canceledJob <- struct{}{}
 		return errors.ErrRejectedExecution
+	case <-ctx.Done():
+		canceledJob <- struct{}{}
+		return ctx.Err()
 	case <-dequeuedJob:
 		return <-res
 	}
