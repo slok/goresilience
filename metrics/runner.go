@@ -43,6 +43,7 @@ func NewMiddleware(id string, rec Recorder) goresilience.Middleware {
 	rec = rec.WithID(id)
 
 	return func(next goresilience.Runner) goresilience.Runner {
+		next = goresilience.SanitizeRunner(next)
 		return goresilience.RunnerFunc(func(ctx context.Context, f goresilience.Func) (err error) {
 			defer func(start time.Time) {
 				rec.ObserveCommandExecution(start, err == nil)
@@ -53,7 +54,6 @@ func NewMiddleware(id string, rec Recorder) goresilience.Middleware {
 			// by the context. Measure if this has a big impact.
 			ctx = SetRecorderOnContext(ctx, rec)
 
-			next = goresilience.SanitizeRunner(next)
 			err = next.Run(ctx, f)
 
 			return err
